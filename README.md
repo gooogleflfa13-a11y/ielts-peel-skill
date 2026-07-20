@@ -1,6 +1,6 @@
 # IELTS PEEL Hacker
 
-冷酷逻辑生成器 —— 雅思大作文 Body / 口语 Part 3 专用 AI 写作助理。
+逻辑生成器 —— 雅思大作文 Body / 口语 Part 3 专用 AI 写作助理。
 
 全栈：`React (Vite) + Tailwind CSS` 前端 · `Node.js (Express)` 后端。  
 内嵌 `Agent_System_Prompt.md`，支持 `/wizard` · `/peel` · `/matrix` 三条指令。
