@@ -84,7 +84,7 @@ app.post('/api/generate', async (req, res) => {
     const completion = await client.chat.completions.create({
       model,
       messages,
-      temperature: 0.55,
+      temperature: 0.3,
       max_tokens: 2500,
     });
 
@@ -120,23 +120,33 @@ function normalizeHistory(history) {
     .map((m) => ({ role: m.role, content: m.content }));
 }
 
-/** Light structural parse for frontend highlighting */
+/** Light structural parse for frontend highlighting.
+ *  Scans for [P]/[E1]/[E2]/[L] markers in document order and captures the
+ *  text up to the next marker — robust to multi-line PEEL sentences, which
+ *  LLMs produce frequently. */
 function parsePeelOutput(text) {
-  if (!text) return { peels: [], meta: null, raw: '' };
+  if (!text) return { peels: [], meta: null, model: null, raw: '' };
 
   const peels = [];
-  const blockRe =
-    /\[P\]\s*([\s\S]*?)(?=\n\s*\[E1\])\s*\[E1\]\s*([\s\S]*?)(?=\n\s*\[E2\])\s*\[E2\]\s*([\s\S]*?)(?=\n\s*\[L\])\s*\[L\]\s*([\s\S]*?)(?=(?:\n\s*\[P\])|(?:\n\s*---)|(?:\n\s*##)|(?:\n\s*###)|$)/gi;
+  // Match each [LABEL] and the content that follows it until the next [LABEL]
+  // (or end of string). The negative lookahead `(?![\s\S]*?\[L\])` on the L
+  // group is unnecessary; we rely on ordered scanning instead.
+  const markerRe = /\[(P|E1|E2|L)\]\s*([\s\S]*?)(?=\s*\[(P|E1|E2|L)\]|$)/gi;
 
   let m;
-  while ((m = blockRe.exec(text)) !== null) {
-    peels.push({
-      P: m[1].trim(),
-      E1: m[2].trim(),
-      E2: m[3].trim(),
-      L: m[4].trim().split('\n')[0].trim(),
-    });
+  let current = null;
+  while ((m = markerRe.exec(text)) !== null) {
+    const label = m[1];
+    const body = m[2].replace(/^\s*\n/, '').replace(/\s+$/, '');
+
+    if (label === 'P') {
+      if (current) peels.push(current);
+      current = { P: body, E1: '', E2: '', L: '' };
+    } else if (current) {
+      current[label] = body;
+    }
   }
+  if (current) peels.push(current);
 
   const metaMatch = text.match(/底层逻辑[：:]\s*(.+)/);
   const modelMatch = text.match(/Model\s*([ABC])\s*[:：]\s*(.+)/i);

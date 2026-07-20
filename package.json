@@ -4,11 +4,12 @@
   "private": true,
   "description": "IELTS PEEL Hacker — AI writing assistant agent (Vite React + Tailwind + Node.js)",
   "scripts": {
+    "build:prompt": "node scripts/build-prompt.mjs",
     "dev": "concurrently \"npm run dev:server\" \"npm run dev:client\"",
     "dev:server": "npm run dev --prefix server",
     "dev:client": "npm run dev --prefix client",
-    "install:all": "npm install && npm install --prefix server && npm install --prefix client",
-    "build": "npm run build --prefix client",
+    "install:all": "npm install && npm install --prefix server && npm install --prefix client && npm run build:prompt",
+    "build": "npm run build:prompt && npm run build --prefix client",
     "start": "npm run start --prefix server"
   },
   "devDependencies": {

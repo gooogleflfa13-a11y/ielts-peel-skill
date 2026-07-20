@@ -185,8 +185,8 @@ Agent:
 ## 快速开始
 
 ```bash
-cd peel-hacker-app
-npm run install:all
+git clone <this-repo> peel-hacker-app && cd peel-hacker-app
+npm run install:all   # 安装依赖 + 自动从 Agent_System_Prompt.md 生成 server/systemPrompt.js
 npm run dev
 ```
 
@@ -239,19 +239,31 @@ npm run dev
 
 ```
 peel-hacker-app/
-├── Agent_System_Prompt.md     # 系统提示词 = 项目灵魂
-├── README.md
+├── Agent_System_Prompt.md     # 系统提示词唯一源码 = 项目灵魂
+├── scripts/
+│   └── build-prompt.mjs       # 从 .md 抽取全文生成 server/systemPrompt.js
 ├── server/
-│   ├── index.js               # Express API
-│   └── systemPrompt.js        # 内嵌 Prompt
+│   ├── index.js               # Express API + 结构化解析
+│   └── systemPrompt.js        # 由 build-prompt.mjs 自动生成（勿手改）
 └── client/
     └── src/components/
         ├── CommandPanel.jsx   # 三种指令面板
         ├── ResultPanel.jsx    # 结构化结果渲染
-        └── PeelBlock.jsx      # PEEL 四句高亮组件
+        ├── PeelBlock.jsx      # PEEL 四句高亮组件
+        └── ApiKeyPanel.jsx     # API Key / Base URL / Model 配置
 ```
 
-配套知识库 `PEEL_Knowledge_Base.md` 在同级目录，可离线阅读。
+---
+
+## 提示词是怎么工作的（重要）
+
+`server/systemPrompt.js` **不是手写的**，而是由 `scripts/build-prompt.mjs` 从 `Agent_System_Prompt.md` 的第一段代码块（``` ``` ``` 包裹的正文）自动抽取生成的。这样可以保证「单一事实来源」：
+
+- 想改提示词 → 只改 `Agent_System_Prompt.md`；
+- 改完跑 `npm run build:prompt` 重新生成；
+- `install:all` 和 `build` 会自动执行它，无需手动步骤。
+
+如果你 fork 后修改了提示词却没重生成，服务器会用到旧版。
 
 ---
 
