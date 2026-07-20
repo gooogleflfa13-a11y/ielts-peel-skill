@@ -1,6 +1,6 @@
 # IELTS PEEL Hacker
 
-> 冷酷逻辑生成器 —— 雅思大作文 Task 2 Body / 口语 Part 3 专用 AI 引擎。
+> —— 雅思大作文 Task 2 Body / 口语 Part 3 引擎。
 
 ---
 
