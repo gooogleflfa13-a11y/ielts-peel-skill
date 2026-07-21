@@ -3,6 +3,30 @@ import OpenAI from 'openai';
 const MAX_RETRIES = 2;
 const BASE_DELAY_MS = 500;
 
+function buildClient(apiKey, baseUrl) {
+  return new OpenAI({
+    apiKey,
+    baseURL: (baseUrl || 'https://api.openai.com/v1').replace(/\/$/, ''),
+  });
+}
+
+function buildMessages({ system, user, history = [], messages }) {
+  if (Array.isArray(messages) && messages.length) return messages;
+  return [
+    { role: 'system', content: system },
+    ...history
+      .filter(
+        (m) =>
+          m &&
+          (m.role === 'user' || m.role === 'assistant') &&
+          typeof m.content === 'string'
+      )
+      .slice(-12)
+      .map((m) => ({ role: m.role, content: m.content })),
+    { role: 'user', content: user },
+  ];
+}
+
 /**
  * Unified LLM call with retries for 5xx/network errors.
  */
@@ -13,22 +37,12 @@ export async function callLLM({
   system,
   user,
   history = [],
+  messages,
   temperature = 0.3,
   maxTokens = 2500,
 }) {
-  const client = new OpenAI({
-    apiKey,
-    baseURL: (baseUrl || 'https://api.openai.com/v1').replace(/\/$/, ''),
-  });
-
-  const messages = [
-    { role: 'system', content: system },
-    ...history
-      .filter((m) => m && (m.role === 'user' || m.role === 'assistant') && typeof m.content === 'string')
-      .slice(-12)
-      .map((m) => ({ role: m.role, content: m.content })),
-    { role: 'user', content: user },
-  ];
+  const client = buildClient(apiKey, baseUrl);
+  const msgs = buildMessages({ system, user, history, messages });
 
   let lastError = null;
 
@@ -36,7 +50,7 @@ export async function callLLM({
     try {
       const completion = await client.chat.completions.create({
         model,
-        messages,
+        messages: msgs,
         temperature,
         max_tokens: maxTokens,
       });
@@ -61,12 +75,14 @@ export function handleLLMError(err) {
   const status = err?.status || err?.response?.status;
   if (status === 429) return 'API rate limit reached. Wait 30 seconds and retry.';
   if (status === 401 || status === 403) return 'Invalid API key. Check your credentials.';
-  if (status === 503) return 'LLM provider is temporarily unavailable. Try again in a few minutes.';
+  if (status === 503)
+    return 'LLM provider is temporarily unavailable. Try again in a few minutes.';
   return err?.error?.message || err?.message || 'LLM request failed';
 }
 
 /**
- * Streaming variant
+ * Streaming variant — async generator of text deltas.
+ * Accepts either { system, user, history } or prebuilt { messages }.
  */
 export async function* streamLLM({
   apiKey,
@@ -75,23 +91,18 @@ export async function* streamLLM({
   system,
   user,
   history = [],
+  messages,
   temperature = 0.3,
+  maxTokens = 2500,
 }) {
-  const client = new OpenAI({
-    apiKey,
-    baseURL: (baseUrl || 'https://api.openai.com/v1').replace(/\/$/, ''),
-  });
-  const messages = [
-    { role: 'system', content: system },
-    ...history.slice(-12).map((m) => ({ role: m.role, content: m.content })),
-    { role: 'user', content: user },
-  ];
+  const client = buildClient(apiKey, baseUrl);
+  const msgs = buildMessages({ system, user, history, messages });
 
   const stream = await client.chat.completions.create({
     model,
-    messages,
+    messages: msgs,
     temperature,
-    max_tokens: 2500,
+    max_tokens: maxTokens,
     stream: true,
   });
 
@@ -100,3 +111,6 @@ export async function* streamLLM({
     if (delta) yield delta;
   }
 }
+
+/** Alias used by orchestrator stream path */
+export const callLLMStream = streamLLM;

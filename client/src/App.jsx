@@ -99,12 +99,20 @@ export default function App() {
         const userMsg = input.trim().startsWith('/wizard')
           ? input.trim()
           : `/wizard ${input.trim()}`.trim();
-        setHistory((h) => [
-          ...h,
-          { role: 'user', content: userMsg || '/wizard' },
-          { role: 'assistant', content: data.content },
-        ]);
-      } else if (command !== 'score') {
+        // Cap turns + truncate long assistant bodies to avoid 40k+ token history blowup
+        const MAX_TURNS = 8;
+        const MAX_ASSISTANT_CHARS = 1200;
+        const assistantBody = String(data.content || '').slice(0, MAX_ASSISTANT_CHARS);
+        setHistory((h) => {
+          const next = [
+            ...h,
+            { role: 'user', content: userMsg || '/wizard' },
+            { role: 'assistant', content: assistantBody },
+          ];
+          // keep last N message pairs (2 messages each)
+          return next.slice(-(MAX_TURNS * 2));
+        });
+      } else if (command !== 'score' && command !== 'bank') {
         setHistory([]);
       }
     } catch (e) {

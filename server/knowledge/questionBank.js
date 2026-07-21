@@ -10,10 +10,19 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 const BANK_DIR = join(__dirname, 'question-bank');
 const DEFAULT_BANK = 'speaking-2026-05-08.json';
 
+/** Simple single-slot cache; call clearBankCache() after swapping bank files */
 let _cache = null;
+
+export function clearBankCache() {
+  _cache = null;
+}
 
 export function loadBank(filename = DEFAULT_BANK) {
   if (_cache && _cache.__file === filename) return _cache;
+  // Drop previous bank when filename changes (prevents multi-bank leak)
+  if (_cache && _cache.__file !== filename) {
+    _cache = null;
+  }
   const path = join(BANK_DIR, filename);
   if (!existsSync(path)) {
     throw new Error(`Question warehouse not found: ${filename}`);

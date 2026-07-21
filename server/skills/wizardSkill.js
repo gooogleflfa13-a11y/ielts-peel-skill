@@ -4,6 +4,8 @@ import { parsePeelOutput } from '../parsing/peelParser.js';
 import { validatePeels } from '../evaluation/validator.js';
 import { retrieveTopic } from '../knowledge/topicRetriever.js';
 import { recordPeelResult, addE2Fuel } from '../memory/userMemory.js';
+import { sanitizeFuelText, sanitizeUserInput, wrapAsTaskPayload } from '../utils/sanitize.js';
+import { MAX_INPUT_CHARS } from '../utils/constants.js';
 
 export async function runWizardSkill({
   input,
@@ -13,7 +15,10 @@ export async function runWizardSkill({
   model,
   userId = 'default',
 }) {
-  const { classification, knowledge: topicKnowledge } = retrieveTopic(input);
+  const { clean: safeInput } = sanitizeUserInput(input, {
+    maxLen: MAX_INPUT_CHARS,
+  });
+  const { classification, knowledge: topicKnowledge } = retrieveTopic(safeInput);
 
   const system = buildWizardPrompt({
     topicKnowledge,
@@ -21,18 +26,18 @@ export async function runWizardSkill({
   });
 
   const userMessage =
-    !input.trim() || input.trim() === '/wizard'
+    !safeInput.trim() || safeInput.trim() === '/wizard'
       ? '/wizard'
-      : input.trim().startsWith('/wizard')
-        ? input.trim()
-        : `/wizard ${input.trim()}`;
+      : safeInput.trim().startsWith('/wizard')
+        ? safeInput.trim()
+        : `/wizard ${safeInput.trim()}`;
 
   const { content, usage } = await callLLM({
     apiKey,
     baseUrl,
     model,
     system,
-    user: userMessage,
+    user: wrapAsTaskPayload(userMessage),
     history,
     maxTokens: 3500,
   });
@@ -48,14 +53,17 @@ export async function runWizardSkill({
           allWarnings: [],
         };
 
-  // Heuristic: store short user answers as potential E2 fuel
-  if (history.length > 0 && input.trim().length > 8 && input.trim().length < 500) {
-    addE2Fuel(userId, {
-      topic: classification.topicId || 'General',
-      entity: input.trim().slice(0, 120),
-      sourceQuestion: 'wizard-turn',
-      sourceAnswer: input.trim().slice(0, 200),
-    });
+  // Store sanitized user answers as E2 fuel (no email/phone; max 300 chars)
+  if (history.length > 0) {
+    const fuel = sanitizeFuelText(safeInput, { maxLen: 300 });
+    if (fuel) {
+      addE2Fuel(userId, {
+        topic: classification.topicId || 'General',
+        entity: fuel.slice(0, 120),
+        sourceQuestion: 'wizard-turn',
+        sourceAnswer: fuel.slice(0, 200),
+      });
+    }
   }
 
   recordPeelResult(userId, {

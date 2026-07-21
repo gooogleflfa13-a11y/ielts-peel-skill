@@ -1,6 +1,7 @@
 import { parsePeelOutput, parseLooseLines } from '../parsing/peelParser.js';
 import { validatePeels, detectEntities } from '../evaluation/validator.js';
 import { aiSemanticScore } from '../evaluation/aiScorer.js';
+import { log } from '../utils/logger.js';
 
 /**
  * Score user-pasted PEEL — programmatic by default; optional AI semantic layer.
@@ -29,10 +30,13 @@ export async function runScoreSkill({
   );
 
   let semantic = null;
+  let semanticError = null;
   if (aiScore && apiKey && peels[0]) {
     try {
       semantic = await aiSemanticScore(peels[0], { apiKey, baseUrl, model });
-    } catch {
+    } catch (err) {
+      semanticError = err?.message || 'AI semantic score failed';
+      log('WARN', 'ai.score.failed', { message: semanticError });
       semantic = null;
     }
   }
@@ -43,6 +47,7 @@ export async function runScoreSkill({
     validation,
     entities,
     semantic,
+    semanticError,
     topic: null,
     retries: 0,
   };

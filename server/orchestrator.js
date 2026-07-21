@@ -3,14 +3,22 @@ import { runMatrixSkill } from './skills/matrixSkill.js';
 import { runWizardSkill } from './skills/wizardSkill.js';
 import { runScoreSkill } from './skills/scoreSkill.js';
 import { runBankSkill } from './skills/bankSkill.js';
-import { getWeaknessReport } from './memory/userMemory.js';
+import { getWeaknessReport, getRelevantFuel, recordPeelResult } from './memory/userMemory.js';
 import { log } from './utils/logger.js';
-import { recordPeel } from './utils/metrics.js';
-import { handleLLMError } from './utils/llmClient.js';
-import { callLLM } from './utils/llmClient.js';
+import { recordMetric } from './utils/metrics.js';
+import { handleLLMError, callLLM, streamLLM } from './utils/llmClient.js';
+import { retrieveTopic } from './knowledge/topicRetriever.js';
+import { buildPeelPrompt } from './prompts/peelPrompt.js';
+import { parsePeelOutput } from './parsing/peelParser.js';
+import { validatePeels, detectEntities } from './evaluation/validator.js';
+import {
+  sanitizeUserInput,
+  wrapAsTaskPayload,
+} from './utils/sanitize.js';
+import { MAX_INPUT_CHARS } from './utils/constants.js';
 
 /**
- * Central dispatcher for /peel /matrix /wizard /score
+ * Central dispatcher for /peel /matrix /wizard /score /bank
  */
 export async function runCommand({
   command,
@@ -26,12 +34,19 @@ export async function runCommand({
   const cmd = (command || 'peel').toLowerCase();
 
   try {
+    const { clean, warnings } = sanitizeUserInput(input, {
+      maxLen: MAX_INPUT_CHARS,
+    });
+    if (warnings.length) {
+      log('WARN', 'input.sanitized', { warnings, command: cmd });
+    }
+
     let result;
 
     switch (cmd) {
       case 'peel':
         result = await runPeelSkill({
-          input,
+          input: clean,
           history,
           apiKey,
           baseUrl,
@@ -41,7 +56,7 @@ export async function runCommand({
         break;
       case 'matrix':
         result = await runMatrixSkill({
-          input,
+          input: clean,
           history,
           apiKey,
           baseUrl,
@@ -51,7 +66,7 @@ export async function runCommand({
         break;
       case 'wizard':
         result = await runWizardSkill({
-          input,
+          input: clean,
           history,
           apiKey,
           baseUrl,
@@ -61,7 +76,7 @@ export async function runCommand({
         break;
       case 'score':
         result = await runScoreSkill({
-          input,
+          input: clean,
           apiKey,
           baseUrl,
           model,
@@ -70,7 +85,7 @@ export async function runCommand({
         break;
       case 'bank':
         result = await runBankSkill({
-          input,
+          input: clean,
           history,
           apiKey,
           baseUrl,
@@ -79,14 +94,16 @@ export async function runCommand({
         });
         break;
       default:
-        throw Object.assign(new Error(`Unknown command: ${cmd}`), { status: 400 });
+        throw Object.assign(new Error(`Unknown command: ${cmd}`), {
+          status: 400,
+        });
     }
 
     const latency = Date.now() - started;
     const tokens = result.usage?.total_tokens || 0;
     const passed = result.validation?.passed ?? true;
 
-    recordPeel({
+    recordMetric({
       topicId: result.topic?.id,
       tokens,
       latency,
@@ -120,6 +137,7 @@ export async function runCommand({
       weak: weak?.suggestion || null,
       latencyMs: latency,
       bank: result.bank || null,
+      sanitizeWarnings: warnings.length ? warnings : undefined,
     };
   } catch (err) {
     log('ERROR', `${cmd}.failed`, {
@@ -130,12 +148,17 @@ export async function runCommand({
     const status = err?.status || err?.response?.status || 500;
     const e = new Error(message);
     e.status = status >= 400 && status < 600 ? status : 500;
+    e.code = err?.code || 'UPSTREAM_ERROR';
+    e.retryable = status >= 500 || status === 429;
     throw e;
   }
 }
 
 /**
- * Streaming version — yields chunks via callbacks
+ * Streaming path.
+ * - peel: true token stream via streamLLM
+ * - other commands: fall back to runCommand then emit one complete event
+ *   (documented: only peel streams tokens)
  */
 export async function runCommandStream({
   command,
@@ -155,87 +178,140 @@ export async function runCommandStream({
 
   try {
     if (cmd !== 'peel') {
-      // For non-peel commands, fall back to non-streaming
-      const result = await runCommand({ command, input, history, apiKey, baseUrl, model, userId, aiScore });
+      const result = await runCommand({
+        command,
+        input,
+        history,
+        apiKey,
+        baseUrl,
+        model,
+        userId,
+        aiScore,
+      });
+      // optional single "chunk" of full body for UI parity
+      if (result.content) onChunk?.(result.content);
       onComplete?.(result);
       return;
     }
 
-    const { classification, knowledge: topicKnowledge } = await import('./knowledge/topicRetriever.js').then(m => m.retrieveTopic(input));
+    const { clean } = sanitizeUserInput(input, { maxLen: MAX_INPUT_CHARS });
+    const { classification, knowledge: topicKnowledge } = retrieveTopic(clean);
 
-    const { getRelevantFuel } = await import('./memory/userMemory.js');
     const userFuel = getRelevantFuel(userId, classification?.topicId);
-    const fuelHint = userFuel.length > 0
-      ? `\n[USER E2 FUEL — prefer these personal entities]: ${userFuel.map(f => f.entity).join(' | ')}\n`
-      : '';
+    const fuelHint =
+      userFuel.length > 0
+        ? `\n[USER E2 FUEL — prefer these personal entities]: ${userFuel
+            .map((f) => f.entity)
+            .join(' | ')}\n`
+        : '';
 
-    const { buildPeelPrompt } = await import('./prompts/peelPrompt.js');
-    const system = buildPeelPrompt({ topicKnowledge, topicId: classification?.topicId, fuelHint });
+    const system = buildPeelPrompt({
+      topicKnowledge,
+      topicId: classification?.topicId,
+      fuelHint,
+    });
 
-    const userMessage = input.trim().startsWith('/peel') ? input.trim() : `/peel ${input.trim()}`;
+    const userMessage = clean.trim().startsWith('/peel')
+      ? clean.trim()
+      : `/peel ${clean.trim()}`;
+    const wrappedUser = wrapAsTaskPayload(userMessage);
 
-    const messages = [
+    const baseMessages = [
       { role: 'system', content: system },
-      ...history.filter(m => m && (m.role === 'user' || m.role === 'assistant') && typeof m.content === 'string').slice(-12).map(m => ({ role: m.role, content: m.content })),
-      { role: 'user', content: userMessage },
+      ...history
+        .filter(
+          (m) =>
+            m &&
+            (m.role === 'user' || m.role === 'assistant') &&
+            typeof m.content === 'string'
+        )
+        .slice(-12)
+        .map((m) => ({ role: m.role, content: m.content })),
+      { role: 'user', content: wrappedUser },
     ];
-
-    const { callLLMStream } = await import('./utils/llmClient.js');
 
     let fullContent = '';
     let retries = 0;
-    let finalParsed = null;
-    let finalValidation = null;
 
-    for await (const chunk of callLLMStream({ apiKey, baseUrl, model, messages, temperature: 0.3, maxTokens: 2500 })) {
+    for await (const chunk of streamLLM({
+      apiKey,
+      baseUrl,
+      model,
+      messages: baseMessages,
+      temperature: 0.3,
+      maxTokens: 2500,
+    })) {
       fullContent += chunk;
       onChunk?.(chunk);
     }
 
-    const { parsePeelOutput } = await import('./parsing/peelParser.js');
-    const { validatePeels } = await import('./evaluation/validator.js');
-
     let parsed = parsePeelOutput(fullContent);
     let validation = validatePeels(parsed.peels);
 
-    if (!validation.passed && validation.allWarnings.length > 0 && parsed.peels.length > 0 && retries === 0) {
+    if (
+      !validation.passed &&
+      validation.allWarnings.length > 0 &&
+      parsed.peels.length > 0
+    ) {
       retries = 1;
-      const correctionHint = `Your previous output had these quality issues:\n${validation.allWarnings.map((w, i) => `${i + 1}. ${w}`).join('\n')}\n\nPLEASE REGENERATE. Fix all issues. Keep exact [P][E1][E2][L] format.`;
+      const failedAttempt = fullContent;
+      const correctionHint = `Your previous output had these quality issues:\n${validation.allWarnings
+        .map((w, i) => `${i + 1}. ${w}`)
+        .join(
+          '\n'
+        )}\n\nPLEASE REGENERATE. Fix all issues. Keep exact [P][E1][E2][L] format.`;
 
-      fullContent = '';
-      const correctedMessages = [...messages, { role: 'assistant', content: fullContent }, { role: 'user', content: correctionHint }];
-
-      for await (const chunk of callLLMStream({ apiKey, baseUrl, model, messages: correctedMessages, temperature: 0.3, maxTokens: 2500 })) {
-        fullContent += chunk;
-        onChunk?.(chunk);
-      }
-
+      // Non-stream correction for reliability; emit as one chunk
+      const corrected = await callLLM({
+        apiKey,
+        baseUrl,
+        model,
+        system,
+        user: correctionHint,
+        history: [
+          ...history,
+          { role: 'user', content: wrappedUser },
+          { role: 'assistant', content: failedAttempt },
+        ],
+      });
+      fullContent = corrected.content || '';
+      onChunk?.('\n\n' + fullContent);
       parsed = parsePeelOutput(fullContent);
       validation = validatePeels(parsed.peels);
     }
 
-    const { recordPeelResult } = await import('./memory/userMemory.js');
-    recordPeelResult(userId, { topicId: classification?.topicId, validation, command: 'peel' });
+    recordPeelResult(userId, {
+      topicId: classification?.topicId,
+      validation,
+      command: 'peel',
+    });
 
-    const { detectEntities } = await import('./evaluation/validator.js');
-    const { getWeaknessReport } = await import('./memory/userMemory.js');
-    const { recordPeel } = await import('./utils/metrics.js');
-
-    const entities = (parsed.peels || []).flatMap(p => detectEntities([p.P, p.E1, p.E2, p.L].join(' ')));
+    const entities = (parsed.peels || []).flatMap((p) =>
+      detectEntities([p.P, p.E1, p.E2, p.L].join(' '))
+    );
     const weak = getWeaknessReport(userId);
     const latency = Date.now() - started;
-    const tokens = 0; // Streaming doesn't return usage easily
 
-    recordPeel({ topicId: classification?.topicId, tokens, latency, passed: validation.passed, command: cmd });
+    recordMetric({
+      topicId: classification?.topicId,
+      tokens: 0,
+      latency,
+      passed: validation.passed,
+      command: cmd,
+    });
 
-    const result = {
+    onComplete?.({
       ok: true,
       command: cmd,
       model,
       content: fullContent,
       parsed,
       usage: null,
-      topic: { id: classification?.topicId, score: classification?.score, matchedKeywords: classification?.matchedKeywords },
+      topic: {
+        id: classification?.topicId,
+        score: classification?.score,
+        matchedKeywords: classification?.matchedKeywords,
+      },
       validation,
       entities,
       semantic: null,
@@ -243,14 +319,14 @@ export async function runCommandStream({
       retries,
       weak: weak?.suggestion || null,
       latencyMs: latency,
-    };
-
-    onComplete?.(result);
+      streamNote: 'Token streaming is peel-only; other commands complete in one shot.',
+    });
   } catch (err) {
-    log('ERROR', `${cmd}.failed`, { message: err?.message, status: err?.status });
-    const { handleLLMError } = await import('./utils/llmClient.js');
+    log('ERROR', `${cmd}.failed`, {
+      message: err?.message,
+      status: err?.status,
+    });
     const message = handleLLMError(err);
-    const status = err?.status || err?.response?.status || 500;
-    onError?.(new Error(message));
+    onError?.(Object.assign(new Error(message), { code: 'STREAM_ERROR', retryable: true }));
   }
 }
