@@ -1,3 +1,5 @@
+<img width="1376" height="768" alt="Generated Image July 21, 2026 - 3_57PM" src="https://github.com/user-attachments/assets/77705c5a-4016-4aae-b7cd-dfa7114a718b" />
+
 # IELTS PEEL Hacker
 
 > **产品是 Skill**  
