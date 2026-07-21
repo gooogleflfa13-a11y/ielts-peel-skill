@@ -39,7 +39,12 @@
 
 - [核心理念](#核心理念)
 - [安装 Skill（产品交付）](#安装-skill产品交付)
-- [四大指令](#四大指令)
+- [指令与输出成果展示](#指令与输出成果展示)
+  - [`/peel`](#peel--单点逻辑爆破)
+  - [`/matrix`](#matrix--降维打穿器)
+  - [`/wizard`](#wizard--基准剧本生成器)
+  - [`/score`](#score--peel-质检)
+  - [`/bank`](#bank--内嵌题库底仓)
 - [思维方式指南](#思维方式指南)
 - [仓库结构](#仓库结构)
 - [可选：本地 Playground](#可选本地-playground)
@@ -120,87 +125,293 @@ mkdir -p .grok/skills && cp -R skill .grok/skills/ielts-peel-hacker
 
 ---
 
-## 四大指令
+## 指令与输出成果展示
+
+> 下面每条指令都按 **你输入什么 → 你得到什么** 展示。  
+> 输出为示意（真实生成会随模型略有措辞差异，但结构锁死不变）。
+
+| 指令 | 一句话产物 | 典型场景 |
+|------|------------|----------|
+| `/peel` | 1 段 4 句英文 PEEL + 1 行中文底层逻辑 | 大作文 body / 口语 Part 3 单题 |
+| `/matrix` | 1 个模型 + 基准 PEEL + 3 道同类题秒杀 | 一类题批量准备 |
+| `/wizard` | 先追问细节 → 3–4 套「你的」母剧本 + 路由表 | 口语地基 / 个人素材库 |
+| `/score` | 质检报告（缺层 / 禁用词 / E2 是否物理） | 批改自己写的 PEEL |
+| `/bank` | 抽题 / 横纵图 / 隐式取题再 PEEL | 口语当季题仓训练 |
+
+---
 
 ### `/peel` — 单点逻辑爆破
 
-输入一道具体题目 → **4 句全英文 PEEL** + 1 行中文底层逻辑。
-
-**示例输入**
-
-> Some people think online education can replace classrooms. Agree?
-
-**示例输出结构**
+**你输入**
 
 ```text
-[P]  抽象立场 / 定性
-[E1] 单向因果机制（无具体例子）
-[E2] 物理实体场景（人 / 地 / 物 / 动作）
-[L]  扣回 P
+/peel Some people think online education can replace traditional classrooms.
+To what extent do you agree or disagree?
+```
+
+**你得到**
+
+```text
+[P] The most compelling argument for preserving physical attendance lies in
+the fact that online education inherently weakens the socialization function
+of schooling.
+
+[E1] Fundamentally, education is not merely information transfer — it is the
+process where young people internalize social norms through peer-to-peer
+dynamics, a mechanism that digital platforms structurally cannot replicate.
+
+[E2] This is particularly evident in university seminar rooms, where students
+build affinity by working together on interactive whiteboards, navigating
+spontaneous disagreements, and forming impromptu study groups after class.
+
+[L] Therefore, the physical classroom's irreplaceable role in cultivating
+social capital makes full replacement by digital alternatives impossible.
 
 ---
-底层逻辑：教育母题 · 社会与情感节点 · 缺失模型 · E2: university seminar rooms
+底层逻辑：教育母题 · 社会与情感节点 · 缺失模型 · E2: university seminar rooms / interactive whiteboards
 ```
+
+**读产物时看什么**
+
+| 行 | 应看到 | 不应看到 |
+|----|--------|----------|
+| P | 抽象定性 | 具体例子、长因果链 |
+| E1 | A→中间齿轮→B | 教室/白板等实体名词堆砌 |
+| E2 | 人/地/物/动作画面 | 空词 people / society |
+| L | 一句话扣回 P | 新论点 |
+
+---
 
 ### `/matrix` — 降维打穿器
 
-输入一个社会现象 → 自动匹配三大模型之一：
+**你输入**
 
-| 模型 | 名称 | 适用 |
-|------|------|------|
-| **A** | 代际差异 Young vs Old | 购物、App、饮食、科技态度… |
-| **B** | 物理在场 vs 虚拟 | 网课、网聊、网购、流媒体 vs 现场… |
-| **C** | 过去 vs 现在 | 社区、安静场所、沟通方式变迁… |
+```text
+/matrix community relationships are weaker than in the past
+```
 
-输出：命中模型 + 底层骨架 + 基准 PEEL + **横向秒杀 3 道同类题** + 逻辑同构说明。
+**你得到（结构示意）**
+
+```text
+## 命中模型
+Model C: 过去 vs 现在 — 城市化 + 数字化的双重挤压
+
+## 底层骨架
+- 过去：tight-knit neighborhoods → spontaneous face-to-face help
+- 现在：high-rise living + short-form video saturation → isolated dwellers
+- 不变机制：物理邻近密度 ≠ 心理连接密度（甚至成反比）
+
+## 基准 PEEL
+[P] Local communities were far stronger in the past.
+[E1] Tight-knit neighborhoods once forced frequent spontaneous interaction;
+     urbanization and digital distraction now isolate city dwellers.
+[E2] A generation ago, neighbors borrowed sugar and watched each other's kids;
+     now people in the same apartment building do not even know each other's names.
+[L] So the erosion of societal cohesion is undeniable.
+
+## 横向秒杀 ×3
+### 题1: Were communities stronger in the past?
+[P]... [E1]... [E2]... [L]...
+
+### 题2: Why don't city neighbors know each other?
+[P]... [E1]... [E2]... [L]...
+
+### 题3: Is technology making us more or less connected?
+[P]... [E1]... [E2]... [L]...
+
+## 逻辑同构说明
+三题共用机制「物理居住密度与心理连接密度的反比」；仅 E2 场景从邻里
+换成电梯间陌生人 / 短视频沉迷 / 远程办公。
+```
+
+**三大模型速查**
+
+| 模型 | 名称 | 适用输入举例 |
+|------|------|----------------|
+| **A** | 代际 Young vs Old | 老人用不用 App、年轻人购物习惯 |
+| **B** | 物理 vs 虚拟 | 网课能否取代教室、网购 vs 实体店 |
+| **C** | 过去 vs 现在 | 社区变淡、安静地方变少、沟通方式变了 |
+
+---
 
 ### `/wizard` — 基准剧本生成器
 
-Agent 先反问 3–4 个关于你真实生活的细节，再提取 E2 实体，生成**完全属于你自己的母剧本 PEEL**。
+**第 1 轮 — 你输入**
 
-目的：用 3–4 个基准故事覆盖尽可能多的题库答案；同时可承担一部分 **Part 2** 内容底座，作为口语素材的地基与引导。
+```text
+/wizard 教育+科技
+```
 
-1. Agent 先问 **3–4 个**生活细节（不先写 PEEL）  
-2. 你回答后 → 用你的细节做 E2 → 生成 3–4 套**属于你的**母剧本  
-3. 附题库路由表：你的细节 → 母题 → 可横向秒杀题型  
+**第 1 轮 — 你得到（只追问，不写 PEEL）**
 
-E2 最难的不是「想不出高大上的例子」，而是大脑空白。`/wizard` 把你的生活直接武器化。
+```text
+1. 你上周最后一次和陌生人面对面聊超过 5 分钟是在哪？（地铁 / 食堂 / 无）
+2. 你手机里最长一次连续刷短视频大概多久？什么 App？
+3. 你家乡有没有一条小时候安静、现在被商场或高架盖掉的路？
+4. 你和父母在选专业 / 付学费时最常吵架的具体场景是什么？
+```
+
+**第 2 轮 — 你回答（示例）**
+
+```text
+1. 几乎没有，都是外卖骑手交接
+2. 抖音连续刷了 90 分钟
+3. 有，原来的河边步道现在是购物中心停车场
+4. 高考后爸妈逼着报会计，我在客厅摔了志愿表
+```
+
+**第 2 轮 — 你得到（结构示意）**
+
+```text
+## 母剧本 ×3
+
+### 剧本 1 — 物理在场 vs 虚拟（教育/科技）
+[P] Purely digital learning erodes the socialization core of education.
+[E1] Screens filter out micro-expressions and peer negotiation drills that
+     build real-world cooperation.
+[E2] After a 90-minute Douyin session alone in a bedroom, there is no
+     post-class argument at a whiteboard — only the next push notification.
+[L] So physical peer dynamics remain non-negotiable for holistic learning.
+
+### 剧本 2 — 过去 vs 现在（城市化）
+[P] Quiet public space has been displaced by commercial sprawl.
+[E1] ...
+[E2] The riverside walk of childhood is now a shopping-mall parking lot...
+[L] ...
+
+### 剧本 3 — 代际 / 教育经济节点
+[P] ...
+[E2] Smashing the college application form on the living-room table...
+...
+
+## 题库路由映射表
+| 你的细节           | 命中母题     | 可横向秒杀题型           |
+|--------------------|--------------|--------------------------|
+| 抖音 90 分钟       | 科技/健康    | 手机是否让人孤独         |
+| 河边→停车场        | 城市化/环境  | 安静的地方是否变少       |
+| 摔志愿表           | 教育/社会    | 父母是否应决定专业       |
+```
+
+**产品点**：E2 来自**你的生活**，不是背范文；3–4 个剧本可覆盖 Part 2 叙事地基 + 大量 Part 3 / 作文变体。
+
+---
 
 ### `/score` — PEEL 质检
 
-粘贴自己的 PEEL（带标签或四行）→ 冷酷检查：
-
-- 是否缺层 / 禁用连接词  
-- P 是否混进举例或过长因果  
-- E2 是否缺少物理实体  
-- L 是否过长或引入新观点  
-
-Playground 下 `/score` **可不填 API Key**（纯程序质检）。
-
-### `/bank` — 内嵌题库底仓（材料数据平面）
-
-口语题库已 **结构化嵌入** 系统（`server/knowledge/question-bank/` + `skill/references/question-bank/`），  
-**不是** 给用户下载的独立 PDF/文件，而是生成与路由时调用的隐藏材料底仓。
-
-| 子命令 | 作用 | 是否需要 API Key |
-|--------|------|------------------|
-| `/bank random [p1\|p2\|p3] [keyword]` | 智能随机出题 | 否 |
-| `/bank search <keyword>` | 检索话题 | 否 |
-| `/bank links <ref\|keyword>` | 横纵联系（同母题 / P1↔P2/P3） | 否 |
-| `/bank peel <ref\|keyword>` | 隐式取题 → 直接出 PEEL | 是 |
-| `/bank stats` | 底仓规模与母题分布 | 否 |
-
-示例：
+**你输入**
 
 ```text
-/bank random p3
-/bank random p2 traffic
-/bank search music
-/bank links 交通拥堵
-/bank peel p2_be3ba24f04
+/score
+[P] Online education is bad because students do not talk and this leads to
+weak skills and also for example they stay at home.
+[E1] It is bad for society.
+[E2] Research shows social skills are important for people in society.
+[L] In conclusion, this is a serious issue and governments should act and
+build more schools and also improve the internet.
 ```
 
-当前嵌入规模（2026-05~08 口语仓）：Part1 话题 40+ · Part2 话题 60+ · 含 P3 讨论链与母题路由。
+**你得到（示意）**
+
+```text
+⚠ QUALITY GATE
+structure: 1.0 | layers: 0.25 | physical: 0.0
+
+• Banned discourse glue detected: /\bin conclusion\b/i
+• P contains "for example"
+• P has excessive causal chains — keep abstract
+• E1 contains concrete entities — move to E2   (若适用)
+• ⚠️ E2 lacks ANY physical entity — add person/place/object/action
+• L is too long — should be one sentence max
+```
+
+**对比：合格样例会被标成** `✓ QUALITY PASS`（无禁用连接词、E2 有 seminar room / whiteboard 等实体）。
+
+Playground 下 `/score` **可不填 API Key**（程序化质检）。
+
+---
+
+### `/bank` — 内嵌题库底仓
+
+口语题已嵌入数据平面（`server/knowledge/question-bank/`、`skill/references/question-bank/`），  
+**不是**用户下载的 PDF，而是抽题 / 关联 / 作答时的隐藏材料仓。
+
+| 子命令 | 作用 | API Key |
+|--------|------|---------|
+| `random [p1\|p2\|p3] [kw]` | 智能随机出题 | 否 |
+| `search <kw>` | 检索话题 | 否 |
+| `links <ref\|kw>` | 横纵联系 | 否 |
+| `peel <ref\|kw>` | 隐式取题 → PEEL | 是 |
+| `stats` | 底仓规模 | 否 |
+
+#### 例 A — 随机抽 P2
+
+**输入**
+
+```text
+/bank random p2 traffic
+```
+
+**输出**
+
+```text
+## DRAW
+Part: P2 · Mother: Urbanization · ref:`p2_be3ba24f04`
+
+**Prompt**
+Describe a time when you were stuck in a traffic jam for a very long time
+
+**Cue bullets**
+- When it happened
+- Where you were stuck
+- What you did while waiting
+- And explain how you felt in the traffic jam
+
+**P3 teaser**
+- How can we solve the traffic jam problem?
+- Do you think developing public transport can solve traffic jam problems?
+
+---
+Next: /bank peel p2_be3ba24f04 · /bank links p2_be3ba24f04
+```
+
+#### 例 B — 横纵联系
+
+**输入**
+
+```text
+/bank links 交通拥堵
+```
+
+**输出（示意）**
+
+```text
+## LINK MAP
+Focus: **交通拥堵** (P2) · Mother: Urbanization · ref:`p2_…`
+
+### 横向 Horizontal — 同母题可迁移
+- P1 · Cars — Are there tall buildings near…（同属城市/交通簇）
+- P2 · 高建筑 / 通勤类话题 — 共用「空间压缩 / 动脉阻塞」节点
+
+### 纵向 Vertical — P1 热身 ↔ P2/P3 深挖
+- P1 可先练 Cars / Building
+- P3 可升维到 public transport / congestion policy（直接 /peel）
+
+### PEEL route
+- Mother: Urbanization
+- Try: /bank peel <ref> 或 /peel How can we solve traffic jams?
+```
+
+#### 例 C — 底仓隐式取题并作答
+
+**输入**
+
+```text
+/bank peel traffic jam
+```
+
+**输出**：先锁定仓库里的 P2/P3 题干（不甩整本 PDF），再附上标准 `[P][E1][E2][L]` + 底层逻辑（同 `/peel` 形态）。
+
+当前嵌入规模（2026-05~08 口语仓）：Part1 话题 40+ · Part2 话题 60+ · 含 P3 链与母题路由。
 
 ---
 
