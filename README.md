@@ -1,7 +1,7 @@
 # IELTS PEEL Hacker
 
-> **产品是 Skill，不是网页。**  
-> 冷酷逻辑生成器 —— 雅思大作文 **Task 2 Body** / 口语 **Part 3**。  
+> **产品是 Skill**  
+> 逻辑生成器 —— 雅思大作文 **Task 2 Body** / 口语 **Part 3**。  
 > 用锁定结构 `[P] → [E1] → [E2] → [L]` 执行因果论证，而不是堆砌连接词。
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](./LICENSE)
