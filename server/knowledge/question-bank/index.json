@@ -1,0 +1,14 @@
+{
+  "banks": [
+    {
+      "id": "speaking_bank_2026_05_08",
+      "path": "speaking-2026-05-08.json",
+      "counts": {
+        "part1_topics": 41,
+        "part2_topics": 62,
+        "part1_questions": 284,
+        "part3_questions": 362
+      }
+    }
+  ]
+}

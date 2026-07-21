@@ -53,12 +53,21 @@ export default function App() {
 
   const handleGenerate = async () => {
     setError('');
-    const needsKey = command !== 'score';
-    if (needsKey && !settings.apiKey.trim()) {
+    // score free; bank free except peel; peel/matrix/wizard need key
+    const bankPeel =
+      command === 'bank' &&
+      /\b(peel|answer|答|作答)\b/i.test(input) &&
+      !/\b(random|search|links|stats|抽题|随机)\b/i.test(input);
+    const requireKey =
+      command === 'peel' ||
+      command === 'matrix' ||
+      command === 'wizard' ||
+      bankPeel;
+    if (requireKey && !settings.apiKey.trim()) {
       setError('请先输入 API Key。');
       return;
     }
-    if (!input.trim() && command !== 'wizard') {
+    if (!input.trim() && command !== 'wizard' && command !== 'bank') {
       setError('请输入题目、现象或 PEEL 文本。');
       return;
     }

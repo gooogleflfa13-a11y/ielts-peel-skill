@@ -20,7 +20,7 @@ app.get('/api/health', (_req, res) => {
     ok: true,
     agent: 'IELTS PEEL Hacker',
     version: '2.0.0-evolution',
-    commands: ['peel', 'matrix', 'wizard', 'score'],
+    commands: ['peel', 'matrix', 'wizard', 'score', 'bank'],
   });
 });
 
@@ -44,14 +44,24 @@ app.post('/api/generate', async (req, res) => {
     aiScore = false,
   } = req.body || {};
 
-  if (!['peel', 'matrix', 'wizard', 'score'].includes(command)) {
+  if (!['peel', 'matrix', 'wizard', 'score', 'bank'].includes(command)) {
     return res
       .status(400)
-      .json({ error: 'Invalid command. Use peel | matrix | wizard | score.' });
+      .json({ error: 'Invalid command. Use peel | matrix | wizard | score | bank.' });
   }
 
-  // score can run without API key (programmatic only)
-  if (command !== 'score' && (!apiKey || typeof apiKey !== 'string')) {
+  // score + most bank ops can run without API key; bank peel needs key
+  const inputStr = String(input || '');
+  const bankNeedsKey =
+    command === 'bank' &&
+    (/^\s*\/?bank\s+(peel|answer|答|作答)\b/i.test(inputStr) ||
+      (/\bpeel\b/i.test(inputStr) &&
+        !/random|search|links|stats|抽题|随机|搜|关联/i.test(inputStr)));
+
+  const needsKey =
+    command !== 'score' && !(command === 'bank' && !bankNeedsKey);
+
+  if (needsKey && (!apiKey || typeof apiKey !== 'string')) {
     return res.status(400).json({ error: 'API Key is required.' });
   }
 
@@ -61,7 +71,7 @@ app.post('/api/generate', async (req, res) => {
       .json({ error: 'API Key is required for AI semantic scoring.' });
   }
 
-  if (!String(input || '').trim() && command !== 'wizard') {
+  if (!inputStr.trim() && command !== 'wizard' && command !== 'bank') {
     return res.status(400).json({ error: 'Input required.' });
   }
 

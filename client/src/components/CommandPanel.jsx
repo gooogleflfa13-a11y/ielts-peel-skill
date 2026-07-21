@@ -29,6 +29,14 @@ const COMMANDS = [
     placeholder:
       '[P] ...\n[E1] ...\n[E2] ...\n[L] ...',
   },
+  {
+    id: 'bank',
+    label: '/bank',
+    title: '题库底仓',
+    hint: '内嵌口语题仓（非独立文件）：random 抽题 · links 横纵 · peel 隐式取题作答 · search / stats',
+    placeholder:
+      'random p3\nrandom p2 traffic\nsearch music\nlinks building\npeel <ref>\nstats',
+  },
 ];
 
 const SAMPLES = {
@@ -39,6 +47,7 @@ const SAMPLES = {
 [E1] This means young people miss the daily peer-to-peer negotiations that teach conflict resolution and empathy.
 [E2] Take university seminar rooms: students who study entirely online never build the impromptu study groups at whiteboards that become lifelong professional networks.
 [L] Thus, physical attendance plays an irreplaceable role in holistic education.`,
+  bank: 'random p3',
 };
 
 export default function CommandPanel({

@@ -177,6 +177,31 @@ E2 最难的不是「想不出高大上的例子」，而是大脑空白。`/wiz
 
 Playground 下 `/score` **可不填 API Key**（纯程序质检）。
 
+### `/bank` — 内嵌题库底仓（材料数据平面）
+
+口语题库已 **结构化嵌入** 系统（`server/knowledge/question-bank/` + `skill/references/question-bank/`），  
+**不是** 给用户下载的独立 PDF/文件，而是生成与路由时调用的隐藏材料底仓。
+
+| 子命令 | 作用 | 是否需要 API Key |
+|--------|------|------------------|
+| `/bank random [p1\|p2\|p3] [keyword]` | 智能随机出题 | 否 |
+| `/bank search <keyword>` | 检索话题 | 否 |
+| `/bank links <ref\|keyword>` | 横纵联系（同母题 / P1↔P2/P3） | 否 |
+| `/bank peel <ref\|keyword>` | 隐式取题 → 直接出 PEEL | 是 |
+| `/bank stats` | 底仓规模与母题分布 | 否 |
+
+示例：
+
+```text
+/bank random p3
+/bank random p2 traffic
+/bank search music
+/bank links 交通拥堵
+/bank peel p2_be3ba24f04
+```
+
+当前嵌入规模（2026-05~08 口语仓）：Part1 话题 40+ · Part2 话题 60+ · 含 P3 讨论链与母题路由。
+
 ---
 
 ## 思维方式指南

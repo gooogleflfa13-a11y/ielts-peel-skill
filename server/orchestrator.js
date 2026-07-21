@@ -2,6 +2,7 @@ import { runPeelSkill } from './skills/peelSkill.js';
 import { runMatrixSkill } from './skills/matrixSkill.js';
 import { runWizardSkill } from './skills/wizardSkill.js';
 import { runScoreSkill } from './skills/scoreSkill.js';
+import { runBankSkill } from './skills/bankSkill.js';
 import { getWeaknessReport } from './memory/userMemory.js';
 import { log } from './utils/logger.js';
 import { recordPeel } from './utils/metrics.js';
@@ -67,6 +68,16 @@ export async function runCommand({
           aiScore,
         });
         break;
+      case 'bank':
+        result = await runBankSkill({
+          input,
+          history,
+          apiKey,
+          baseUrl,
+          model,
+          userId,
+        });
+        break;
       default:
         throw Object.assign(new Error(`Unknown command: ${cmd}`), { status: 400 });
     }
@@ -108,6 +119,7 @@ export async function runCommand({
       retries: result.retries || 0,
       weak: weak?.suggestion || null,
       latencyMs: latency,
+      bank: result.bank || null,
     };
   } catch (err) {
     log('ERROR', `${cmd}.failed`, {
