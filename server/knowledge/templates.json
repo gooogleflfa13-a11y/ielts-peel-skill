@@ -1,0 +1,21 @@
+{
+  "P": {
+    "catalyst": "The most compelling justification for [stance] lies in the fact that [A] acts as a primary catalyst for [B], thereby significantly altering the landscape of [C].",
+    "absence": "The most compelling justification for [stance] lies in the fact that the absence of [A] inherently breeds [B], ultimately jeopardizing [C].",
+    "doubleEdged": "At the core of this issue is the stark reality that while [A] offers undeniable conveniences, it simultaneously exacts a heavy toll on [B]."
+  },
+  "E1": {
+    "forwardCausal": "To be more specific, this means that [mechanism], which inevitably leads to [result].",
+    "counterfactual": "Had this approach not been adopted, [subject] would have suffered from [catastrophic outcome].",
+    "contrastive": "This stands in stark contrast to [foil], where [flawed mechanism] is fundamentally flawed."
+  },
+  "E2": {
+    "policySuccess": "A quintessential illustration of this can be observed in [place/industry], where the implementation of [measure] has successfully led to [outcome], without compromising [trade-off].",
+    "disaster": "This is particularly evident in cases where [group/institution] fail to [action], which invariably results in a vicious cycle of [disaster1] and [disaster2].",
+    "trend": "Empirical evidence consistently demonstrates that a prolonged exposure to [stimulus] shows a strong positive correlation with [outcome]."
+  },
+  "L": {
+    "absolute": "Therefore, it is evident how [core noun from P] plays a pivotal role in [stance/theme].",
+    "necessity": "Consequently, addressing this aspect is not merely optional, but rather an absolute necessity."
+  }
+}

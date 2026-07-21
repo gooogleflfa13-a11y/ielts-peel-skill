@@ -3,7 +3,7 @@ const COMMANDS = [
     id: 'peel',
     label: '/peel',
     title: '单点逻辑爆破',
-    hint: '输入具体雅思题目 → 四句全英文 PEEL + 一行中文底层逻辑',
+    hint: '输入具体雅思题目 → 四句全英文 PEEL + 一行中文底层逻辑 + 质量门禁',
     placeholder:
       'e.g. Some people believe online education can replace traditional classrooms. To what extent do you agree or disagree?',
   },
@@ -21,12 +21,24 @@ const COMMANDS = [
     hint: '可附题库关键词；Agent 先反问 3–4 个生活细节，再生成母剧本',
     placeholder: 'e.g. 教育+科技题库 / education & technology topics（先发一次拿问题，再回填细节）',
   },
+  {
+    id: 'score',
+    label: '/score',
+    title: 'PEEL 评分',
+    hint: '粘贴你的 PEEL（带 [P][E1][E2][L] 或四行）→ 程序化质检，无需调 LLM（可选 AI 语义分）',
+    placeholder:
+      '[P] ...\n[E1] ...\n[E2] ...\n[L] ...',
+  },
 ];
 
 const SAMPLES = {
   peel: 'Governments should spend more money on public services rather than arts. Discuss both views and give your opinion.',
   matrix: 'community relationships are weaker than in the past',
   wizard: '城市化 + 科技口语题库',
+  score: `[P] The absence of physical schooling breeds deficits in social competency.
+[E1] This means young people miss the daily peer-to-peer negotiations that teach conflict resolution and empathy.
+[E2] Take university seminar rooms: students who study entirely online never build the impromptu study groups at whiteboards that become lifelong professional networks.
+[L] Thus, physical attendance plays an irreplaceable role in holistic education.`,
 };
 
 export default function CommandPanel({
@@ -38,6 +50,7 @@ export default function CommandPanel({
   onGenerate,
   onClearWizard,
   wizardTurns,
+  needsApiKey = true,
 }) {
   const meta = COMMANDS.find((c) => c.id === command) || COMMANDS[0];
 
@@ -45,7 +58,7 @@ export default function CommandPanel({
     <section className="panel flex flex-col p-4 sm:p-5">
       <h2 className="label mb-3">Interactive Commands</h2>
 
-      <div className="grid grid-cols-3 gap-2">
+      <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
         {COMMANDS.map((c) => {
           const active = command === c.id;
           return (
@@ -59,7 +72,11 @@ export default function CommandPanel({
                   : 'border-white/10 bg-ink-950/40 hover:border-white/20'
               }`}
             >
-              <div className={`font-mono text-xs font-semibold ${active ? 'text-acid-400' : 'text-slate-300'}`}>
+              <div
+                className={`font-mono text-xs font-semibold ${
+                  active ? 'text-acid-400' : 'text-slate-300'
+                }`}
+              >
                 {c.label}
               </div>
               <div className="mt-1 text-[10px] leading-snug text-slate-500">{c.title}</div>
@@ -69,6 +86,9 @@ export default function CommandPanel({
       </div>
 
       <p className="mt-3 text-xs leading-relaxed text-slate-400">{meta.hint}</p>
+      {!needsApiKey && command === 'score' && (
+        <p className="mt-1 text-[11px] text-acid-400/80">/score 默认不调用 LLM，无需 API Key</p>
+      )}
 
       {command === 'wizard' && wizardTurns > 0 && (
         <div className="mt-2 flex items-center justify-between rounded-lg border border-acid-500/20 bg-acid-500/5 px-3 py-2 text-xs text-acid-400">
@@ -102,7 +122,8 @@ export default function CommandPanel({
             </>
           ) : (
             <>
-              <span className="font-mono">⚡</span> Generate
+              <span className="font-mono">⚡</span>{' '}
+              {command === 'score' ? 'Score' : 'Generate'}
             </>
           )}
         </button>

@@ -2,8 +2,9 @@ import express from 'express';
 import cors from 'cors';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import OpenAI from 'openai';
-import { SYSTEM_PROMPT } from './systemPrompt.js';
+import { runCommand, runCommandStream } from './orchestrator.js';
+import { getMetrics } from './utils/metrics.js';
+import { log } from './utils/logger.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -14,34 +15,22 @@ const PORT = process.env.PORT || 3001;
 app.use(cors());
 app.use(express.json({ limit: '1mb' }));
 
-const COMMAND_PREFIX = {
-  peel: '/peel',
-  matrix: '/matrix',
-  wizard: '/wizard',
-};
-
-function buildUserMessage(command, input) {
-  const prefix = COMMAND_PREFIX[command] || '/peel';
-  const trimmed = (input || '').trim();
-  if (!trimmed) return `${prefix}`;
-  // Avoid double-prefix if user already typed the command
-  if (trimmed.startsWith('/peel') || trimmed.startsWith('/matrix') || trimmed.startsWith('/wizard')) {
-    return trimmed;
-  }
-  return `${prefix} ${trimmed}`;
-}
-
 app.get('/api/health', (_req, res) => {
   res.json({
     ok: true,
     agent: 'IELTS PEEL Hacker',
-    commands: ['peel', 'matrix', 'wizard'],
+    version: '2.0.0-evolution',
+    commands: ['peel', 'matrix', 'wizard', 'score'],
   });
+});
+
+app.get('/api/metrics', (_req, res) => {
+  res.json(getMetrics());
 });
 
 /**
  * POST /api/generate
- * Body: { apiKey, baseUrl?, model?, command, input, history? }
+ * Body: { apiKey, baseUrl?, model?, command, input, history?, userId?, aiScore? }
  */
 app.post('/api/generate', async (req, res) => {
   const {
@@ -51,115 +40,165 @@ app.post('/api/generate', async (req, res) => {
     command = 'peel',
     input = '',
     history = [],
+    userId = 'default',
+    aiScore = false,
   } = req.body || {};
 
-  if (!apiKey || typeof apiKey !== 'string') {
+  if (!['peel', 'matrix', 'wizard', 'score'].includes(command)) {
+    return res
+      .status(400)
+      .json({ error: 'Invalid command. Use peel | matrix | wizard | score.' });
+  }
+
+  // score can run without API key (programmatic only)
+  if (command !== 'score' && (!apiKey || typeof apiKey !== 'string')) {
     return res.status(400).json({ error: 'API Key is required.' });
   }
 
-  if (!['peel', 'matrix', 'wizard'].includes(command)) {
-    return res.status(400).json({ error: 'Invalid command. Use peel | matrix | wizard.' });
+  if (command === 'score' && aiScore && !apiKey) {
+    return res
+      .status(400)
+      .json({ error: 'API Key is required for AI semantic scoring.' });
   }
 
-  const userContent = buildUserMessage(command, input);
-  if (!userContent.replace(/^\/(peel|matrix|wizard)\s*/, '').trim() && history.length === 0) {
-    // wizard first turn may only send empty with bank; still allow short
-    if (command !== 'wizard') {
-      return res.status(400).json({ error: 'Input required.' });
-    }
+  if (!String(input || '').trim() && command !== 'wizard') {
+    return res.status(400).json({ error: 'Input required.' });
   }
 
   try {
-    const client = new OpenAI({
-      apiKey,
-      baseURL: baseUrl.replace(/\/$/, ''),
-    });
-
-    const messages = [
-      { role: 'system', content: SYSTEM_PROMPT },
-      ...normalizeHistory(history),
-      { role: 'user', content: userContent || '/wizard' },
-    ];
-
-    const completion = await client.chat.completions.create({
-      model,
-      messages,
-      temperature: 0.3,
-      max_tokens: 2500,
-    });
-
-    const content = completion.choices?.[0]?.message?.content || '';
-    const usage = completion.usage || null;
-
-    res.json({
-      ok: true,
+    const result = await runCommand({
       command,
+      input: String(input || ''),
+      history,
+      apiKey,
+      baseUrl,
       model,
-      content,
-      usage,
-      parsed: parsePeelOutput(content),
+      userId,
+      aiScore: Boolean(aiScore),
     });
+    res.json(result);
   } catch (err) {
-    const status = err?.status || err?.response?.status || 500;
-    const message =
-      err?.error?.message ||
-      err?.message ||
-      'Upstream LLM request failed.';
-    console.error('[generate]', message);
-    res.status(status >= 400 && status < 600 ? status : 500).json({
-      error: message,
-    });
+    const status = err.status || 500;
+    res.status(status).json({ error: err.message || 'Request failed' });
   }
 });
 
-function normalizeHistory(history) {
-  if (!Array.isArray(history)) return [];
-  return history
-    .filter((m) => m && (m.role === 'user' || m.role === 'assistant') && typeof m.content === 'string')
-    .slice(-12)
-    .map((m) => ({ role: m.role, content: m.content }));
-}
+/**
+ * POST /api/generate/stream — Server-Sent Events streaming
+ * Query: ?stream=true
+ * Body: same as /api/generate
+ */
+app.post('/api/generate/stream', async (req, res) => {
+  const {
+    apiKey,
+    baseUrl = 'https://api.openai.com/v1',
+    model = 'gpt-4o-mini',
+    command = 'peel',
+    input = '',
+    history = [],
+    userId = 'default',
+    aiScore = false,
+  } = req.body || {};
 
-/** Light structural parse for frontend highlighting.
- *  Scans for [P]/[E1]/[E2]/[L] markers in document order and captures the
- *  text up to the next marker — robust to multi-line PEEL sentences, which
- *  LLMs produce frequently. */
-function parsePeelOutput(text) {
-  if (!text) return { peels: [], meta: null, model: null, raw: '' };
-
-  const peels = [];
-  // Match each [LABEL] and the content that follows it until the next [LABEL]
-  // (or end of string). The negative lookahead `(?![\s\S]*?\[L\])` on the L
-  // group is unnecessary; we rely on ordered scanning instead.
-  const markerRe = /\[(P|E1|E2|L)\]\s*([\s\S]*?)(?=\s*\[(P|E1|E2|L)\]|$)/gi;
-
-  let m;
-  let current = null;
-  while ((m = markerRe.exec(text)) !== null) {
-    const label = m[1];
-    const body = m[2].replace(/^\s*\n/, '').replace(/\s+$/, '');
-
-    if (label === 'P') {
-      if (current) peels.push(current);
-      current = { P: body, E1: '', E2: '', L: '' };
-    } else if (current) {
-      current[label] = body;
-    }
+  if (!['peel', 'matrix', 'wizard', 'score'].includes(command)) {
+    return res
+      .status(400)
+      .json({ error: 'Invalid command. Use peel | matrix | wizard | score.' });
   }
-  if (current) peels.push(current);
 
-  const metaMatch = text.match(/底层逻辑[：:]\s*(.+)/);
-  const modelMatch = text.match(/Model\s*([ABC])\s*[:：]\s*(.+)/i);
+  if (command !== 'score' && (!apiKey || typeof apiKey !== 'string')) {
+    return res.status(400).json({ error: 'API Key is required.' });
+  }
 
-  return {
-    peels,
-    meta: metaMatch ? metaMatch[1].trim() : null,
-    model: modelMatch ? { id: modelMatch[1].toUpperCase(), label: modelMatch[2].trim() } : null,
-    raw: text,
-  };
-}
+  if (command === 'score' && aiScore && !apiKey) {
+    return res
+      .status(400)
+      .json({ error: 'API Key is required for AI semantic scoring.' });
+  }
 
-// Production: serve Vite build if present
+  if (!String(input || '').trim() && command !== 'wizard') {
+    return res.status(400).json({ error: 'Input required.' });
+  }
+
+  res.setHeader('Content-Type', 'text/event-stream');
+  res.setHeader('Cache-Control', 'no-cache');
+  res.setHeader('Connection', 'keep-alive');
+  res.flushHeaders?.();
+
+  try {
+    await runCommandStream({
+      command,
+      input: String(input || ''),
+      history,
+      apiKey,
+      baseUrl,
+      model,
+      userId,
+      aiScore: Boolean(aiScore),
+      onChunk: (chunk) => {
+        res.write(`data: ${JSON.stringify({ type: 'chunk', content: chunk })}\n\n`);
+      },
+      onComplete: (result) => {
+        res.write(`data: ${JSON.stringify({ type: 'complete', ...result })}\n\n`);
+        res.end();
+      },
+      onError: (err) => {
+        res.write(`data: ${JSON.stringify({ type: 'error', error: err.message })}\n\n`);
+        res.end();
+      },
+    });
+  } catch (err) {
+    res.write(`data: ${JSON.stringify({ type: 'error', error: err.message })}\n\n`);
+    res.end();
+  }
+});
+
+/**
+ * POST /api/score — dedicated score endpoint (alias)
+ */
+app.post('/api/score', async (req, res) => {
+  const {
+    input = '',
+    apiKey,
+    baseUrl = 'https://api.openai.com/v1',
+    model = 'gpt-4o-mini',
+    aiScore = false,
+    userId = 'default',
+  } = req.body || {};
+
+  if (!String(input).trim()) {
+    return res.status(400).json({ error: 'Input required.' });
+  }
+
+  try {
+    const result = await runCommand({
+      command: 'score',
+      input: String(input),
+      apiKey,
+      baseUrl,
+      model,
+      userId,
+      aiScore: Boolean(aiScore),
+    });
+    res.json(result);
+  } catch (err) {
+    const status = err.status || 500;
+    res.status(status).json({ error: err.message || 'Score failed' });
+  }
+});
+
+// Global error handler
+app.use((err, _req, res, _next) => {
+  log('ERROR', 'unhandled.error', { message: err.message });
+  res.status(500).json({
+    error:
+      process.env.NODE_ENV === 'production'
+        ? 'Internal server error'
+        : err.message,
+  });
+});
+
+// Production: serve Vite build
 const distPath = path.join(__dirname, '../client/dist');
 if (process.env.NODE_ENV === 'production') {
   app.use(express.static(distPath));
@@ -172,5 +211,6 @@ if (process.env.NODE_ENV === 'production') {
 }
 
 app.listen(PORT, () => {
+  log('INFO', 'server.start', { port: PORT });
   console.log(`IELTS PEEL Hacker server → http://localhost:${PORT}`);
 });

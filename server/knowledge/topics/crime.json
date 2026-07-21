@@ -1,0 +1,93 @@
+{
+  "topic": "Crime",
+  "nodes": [
+    {
+      "id": "retribution_deterrence",
+      "name": "Retribution & Deterrence",
+      "trigger": [
+        "harsh punishment",
+        "death penalty",
+        "deterrence"
+      ],
+      "coreLogic": "Raise the cost of crime to uphold the social contract.",
+      "lexicon": [
+        "act as a powerful deterrent",
+        "serve custodial sentences",
+        "stringent legislation"
+      ]
+    },
+    {
+      "id": "rehabilitation",
+      "name": "Rehabilitation & Reintegration",
+      "trigger": [
+        "prison education",
+        "reoffending",
+        "vocational prison"
+      ],
+      "coreLogic": "Prison-as-school breaks the cycle; pure punishment breeds cross-infection of crime.",
+      "lexicon": [
+        "comprehensive rehabilitation",
+        "vocational training programs",
+        "break the vicious cycle of re-offending"
+      ]
+    },
+    {
+      "id": "root_causes",
+      "name": "Root Causes",
+      "trigger": [
+        "poverty crime",
+        "unemployment theft",
+        "education and crime"
+      ],
+      "coreLogic": "Theft and robbery are by-products of socioeconomic deprivation.",
+      "lexicon": [
+        "socioeconomic deprivation",
+        "marginalized communities",
+        "the widening gap"
+      ]
+    },
+    {
+      "id": "juvenile",
+      "name": "Juvenile Delinquency",
+      "trigger": [
+        "young offenders",
+        "youth crime",
+        "peer pressure media"
+      ],
+      "coreLogic": "Immature cognition plus peer pressure and media violence call for education over pure severity.",
+      "lexicon": [
+        "juvenile delinquency",
+        "peer pressure",
+        "rehabilitation"
+      ]
+    }
+  ],
+  "e2Entities": {
+    "people": [
+      "first-time petty offenders",
+      "repeat felons",
+      "juvenile delinquents",
+      "white-collar embezzlers",
+      "armed police patrols",
+      "parole officers",
+      "innocent bystanders"
+    ],
+    "scenes": [
+      "overcrowded maximum-security prisons",
+      "juvenile detention centers",
+      "impoverished urban ghettos",
+      "high-tech surveillance control rooms",
+      "local courthouses"
+    ],
+    "objects": [
+      "ubiquitous CCTV cameras",
+      "mandatory community service",
+      "cleaning streets",
+      "criminal background checks for employment",
+      "shoplifting groceries",
+      "cyber fraud",
+      "phishing emails",
+      "anti-theft alarm systems"
+    ]
+  }
+}

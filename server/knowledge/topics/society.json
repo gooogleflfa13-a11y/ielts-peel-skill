@@ -1,0 +1,92 @@
+{
+  "topic": "Society",
+  "nodes": [
+    {
+      "id": "aging",
+      "name": "Aging Population",
+      "trigger": [
+        "aging society",
+        "elderly care",
+        "retirement"
+      ],
+      "coreLogic": "Aging shocks healthcare and labor; grandparents also supply childcare capital.",
+      "lexicon": [
+        "aging population",
+        "demographic shift",
+        "societal cohesion"
+      ]
+    },
+    {
+      "id": "heritage",
+      "name": "Cultural Heritage",
+      "trigger": [
+        "protect traditions",
+        "historic buildings",
+        "dialects"
+      ],
+      "coreLogic": "Heritage is identity plus tourism economics, not pure nostalgia.",
+      "lexicon": [
+        "national identity",
+        "cultural diversity",
+        "cultural heritage"
+      ]
+    },
+    {
+      "id": "family",
+      "name": "Family Dynamics",
+      "trigger": [
+        "nuclear family",
+        "extended family",
+        "loneliness elderly"
+      ],
+      "coreLogic": "Extended to nuclear brings freedom plus elderly isolation and parental load.",
+      "lexicon": [
+        "decline of extended family structures",
+        "nuclear family",
+        "generational divide"
+      ]
+    },
+    {
+      "id": "equality",
+      "name": "Equality & Discrimination",
+      "trigger": [
+        "gender equality",
+        "age discrimination",
+        "glass ceiling"
+      ],
+      "coreLogic": "Equality is moral and economic — full labor utilization.",
+      "lexicon": [
+        "gender equality",
+        "breaking the glass ceiling",
+        "combat social prejudice"
+      ]
+    }
+  ],
+  "e2Entities": {
+    "people": [
+      "retired senior citizens",
+      "dual-income parents",
+      "indigenous tribal elders",
+      "expatriates",
+      "immigrants",
+      "ethnic minorities",
+      "male-dominated corporate boardrooms",
+      "stay-at-home fathers"
+    ],
+    "scenes": [
+      "state-funded nursing homes",
+      "historical ruins and monuments",
+      "multicultural immigrant neighborhoods",
+      "traditional local festivals",
+      "maternity wards in hospitals"
+    ],
+    "objects": [
+      "speaking regional dialects",
+      "wearing traditional garments",
+      "paying exorbitant childcare fees",
+      "breaking the glass ceiling",
+      "implementing maternity and paternity leave policies",
+      "generational wealth transfer"
+    ]
+  }
+}

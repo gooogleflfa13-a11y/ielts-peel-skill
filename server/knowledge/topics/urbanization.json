@@ -1,0 +1,92 @@
+{
+  "topic": "Urbanization",
+  "nodes": [
+    {
+      "id": "housing_overcrowding",
+      "name": "Urban Overcrowding & Housing",
+      "trigger": [
+        "housing prices",
+        "slums",
+        "city migration"
+      ],
+      "coreLogic": "Explosive in-migration spikes land prices and compresses living space.",
+      "lexicon": [
+        "massive rural-urban migration",
+        "housing affordability crisis",
+        "overcrowded residential areas"
+      ]
+    },
+    {
+      "id": "traffic",
+      "name": "Traffic Congestion",
+      "trigger": [
+        "traffic jams",
+        "commuting",
+        "private cars"
+      ],
+      "coreLogic": "Private cars paralyze arteries with economic friction and exhaust.",
+      "lexicon": [
+        "severe traffic congestion",
+        "implement congestion charges",
+        "upgrade public transit systems"
+      ]
+    },
+    {
+      "id": "rural_urban_divide",
+      "name": "Rural-Urban Divide",
+      "trigger": [
+        "rural hollowing",
+        "brain drain",
+        "village decline"
+      ],
+      "coreLogic": "Youth outflow hollows villages and deepens internal inequality.",
+      "lexicon": [
+        "rural-urban divide",
+        "massive rural-urban migration",
+        "socioeconomic disparity"
+      ]
+    },
+    {
+      "id": "urban_wellbeing",
+      "name": "Urban Well-being & Planning",
+      "trigger": [
+        "satellite towns",
+        "walkable cities",
+        "metro"
+      ],
+      "coreLogic": "More roads fail; metro, walkable districts, and satellite towns work.",
+      "lexicon": [
+        "satellite towns",
+        "uncontrolled urban sprawl",
+        "sensory overload"
+      ]
+    }
+  ],
+  "e2Entities": {
+    "people": [
+      "exhausted daily commuters",
+      "rural migrant workers",
+      "aggressive real estate developers",
+      "traffic wardens",
+      "pedestrians",
+      "cyclists"
+    ],
+    "scenes": [
+      "subterranean subway networks",
+      "suburban satellite towns",
+      "pedestrian-only commercial districts",
+      "gridlocked intersections",
+      "high-rise residential complexes",
+      "sprawling shantytowns",
+      "car-sharing parking lots"
+    ],
+    "objects": [
+      "exorbitant property prices",
+      "exhaust pipes of private vehicles",
+      "swiping electronic travel cards",
+      "missing a connecting train",
+      "paying downtown congestion charges",
+      "building elevated highways"
+    ]
+  }
+}

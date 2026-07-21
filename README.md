@@ -1,280 +1,284 @@
 # IELTS PEEL Hacker
 
-> —— 雅思大作文 Task 2 Body / 口语 Part 3 引擎。
+> **产品是 Skill，不是网页。**  
+> 冷酷逻辑生成器 —— 雅思大作文 **Task 2 Body** / 口语 **Part 3**。  
+> 用锁定结构 `[P] → [E1] → [E2] → [L]` 执行因果论证，而不是堆砌连接词。
+
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](./LICENSE)
+
+---
+
+## 30 秒搞懂
+
+| 你要做什么 | 打开什么 |
+|------------|----------|
+| **装到 Agent 里用（推荐）** | [`skill/SKILL.md`](./skill/SKILL.md) |
+| **贴到任意 LLM 的 System** | [`skill/references/SYSTEM_PROMPT.md`](./skill/references/SYSTEM_PROMPT.md) |
+| **本地自测 / 调试（可选）** | `client/` + `server/` playground |
+
+```
+                    ┌─────────────────────────┐
+                    │   IELTS PEEL Hacker      │
+                    │   = Skill / System Prompt │
+                    └───────────┬─────────────┘
+                                │
+           ┌────────────────────┼────────────────────┐
+           ▼                    ▼                    ▼
+    /peel 单点爆破      /matrix 横向秒杀      /wizard 母剧本
+           │                    │                    │
+           └────────────────────┴────────────────────┘
+                                │
+                    可选：本地 BYOK 网页壳（非产品）
+```
 
 ---
 
 ## 目录
 
-- [核心理念：你在训练一个逻辑检察官](#核心理念你在训练一个逻辑检察官)
-- [三大指令](#三大指令)
-  - [`/peel` — 单点逻辑爆破](#peel--单点逻辑爆破)
-  - [`/matrix` — 降维打穿器](#matrix--降维打穿器)
-  - [`/wizard` — 基准剧本生成器](#wizard--基准剧本生成器)
-- [思维方式指南：如何正确使用这个工具](#思维方式指南如何正确使用这个工具)
-- [快速开始](#快速开始)
-- [LLM 兼容列表](#llm-兼容列表)
-- [API](#api)
-- [目录结构](#目录结构)
+- [核心理念](#核心理念)
+- [安装 Skill（产品交付）](#安装-skill产品交付)
+- [四大指令](#四大指令)
+- [思维方式指南](#思维方式指南)
+- [仓库结构](#仓库结构)
+- [可选：本地 Playground](#可选本地-playground)
+- [开发与同步](#开发与同步)
 - [安全](#安全)
+- [License](#license)
 
 ---
 
-## 核心理念：你在训练一个逻辑检察官
+## 核心理念
 
-雅思大作文和口语 Part 3 的本质，是 **用英语执行逻辑论证**，不是堆砌词汇。
+雅思大作文和口语 Part 3 的本质是 **用英语执行逻辑论证**，不是背 GRE 词、堆 `Furthermore / Moreover / In conclusion`。
 
-大多数人的错误：花精力背 GRE 词、写花哨从句，却产出一篇词汇华丽但逻辑空洞的文章。考官早就免疫了 `Furthermore`、`Moreover`、`In conclusion` 的机械堆叠 — 真正加分的只有一件事：**句子之间有没有真正的因果链条？**
+考官真正在看的只有一件事：
 
-PEEL Hacker 不教英语，它教你把观点编码成可执行的逻辑链：
+> **句子之间有没有真正的因果链条？**
 
-```
-P  (Point)        观点 / 定性        — "这属于什么问题？"              ← 卫星视角
-E1 (Explanation)  机制 / 因果链      — "A 到底是怎么一步步导致 B 的？"  ← 无人机视角
-E2 (Example)      例子 / 物理实体    — "给我一个看得见摸得着的证据。"   ← 显微镜视角
-L  (Link)         闭环 / 收口        — "一句话扣回去。"                ← 返航视角
-```
+PEEL Hacker 把观点编码成四层可执行结构：
 
-**这就是名字为啥叫 Hacker — 它不是润色语言，是冷酷拆解因果链。**
+| 层 | 名称 | 海拔 | 一句话职责 |
+|----|------|------|------------|
+| **P** | Point | 卫星 | 抽象定调：这是什么性质的问题？ |
+| **E1** | Explanation | 无人机 | 机制：A 如何一步步导致 B？ |
+| **E2** | Example | 显微镜 | 物理实体：看得见摸得着的证据 |
+| **L** | Link | 返航 | 一句话扣回 P，不引入新信息 |
+
+**Hacker = 拆因果链，不是润色语言。**
+
+硬约束（Skill 内强制执行）：
+
+- 每一段 PEEL **恰好四句**，标签为 `[P] [E1] [E2] [L]`
+- 禁止散文胶水：`First of all` / `In conclusion` / `On the one hand` 等
+- 范围外（听力 / 阅读 / 小作文 / 情绪安抚）一律拒答
+- 9 大母题检索：教育 · 科技 · 环境 · 犯罪 · 政府 · 媒体 · 城市化 · 社会 · 健康
 
 ---
 
-## 三大指令
+## 安装 Skill（产品交付）
+
+### 方式 A — 复制 Skill 包（Grok / Claude Code / Cursor 等）
+
+```bash
+git clone https://github.com/gooogleflfa13-a11y/ielts-peel-hacker.git
+cd ielts-peel-hacker
+
+# 用户级（本机全局）
+cp -R skill ~/.grok/skills/ielts-peel-hacker
+# 或
+cp -R skill ~/.agents/skills/ielts-peel-hacker
+
+# 项目级
+mkdir -p .grok/skills && cp -R skill .grok/skills/ielts-peel-hacker
+```
+
+调用示例：
+
+```text
+/ielts-peel-hacker
+/peel Some people think online education can replace traditional classrooms.
+/matrix community relationships are weaker than in the past
+/wizard 教育+科技题库
+```
+
+自然语言同样可以触发，例如：「用 PEEL 爆破这道雅思大作文」。
+
+### 方式 B — 纯 System Prompt（任意 LLM）
+
+1. 打开 [`skill/references/SYSTEM_PROMPT.md`](./skill/references/SYSTEM_PROMPT.md)  
+2. 全文复制到 ChatGPT / Claude / DeepSeek / 硅基流动 等 **System** 字段  
+3. 用户消息直接发题目或 `/peel` `/matrix` `/wizard`
+
+### 方式 C — 本仓库已内置
+
+| 路径 | 说明 |
+|------|------|
+| `skill/` | 可移植产品包 |
+| `.grok/skills/ielts-peel-hacker/` | 仓库内 Grok Skill |
+| `Agent_System_Prompt.md` | System Prompt 源文件（改完后 `npm run sync:skill`） |
+
+---
+
+## 四大指令
 
 ### `/peel` — 单点逻辑爆破
 
-输入一道具体题目 → 精确 4 句英文 PEEL + 1 行中文底层逻辑拆解。
+输入一道具体题目 → **4 句全英文 PEEL** + 1 行中文底层逻辑。
 
-**题目示例：**
+**示例输入**
 
 > Some people think online education can replace classrooms. Agree?
 
-```
-[P]  The most compelling argument for preserving physical attendance lies in
-     the fact that online education inherently weakens the socialization function
-     of schooling.
+**示例输出结构**
 
-[E1] Fundamentally, education is not merely information transfer — it is
-     the process where young people internalize social norms through peer-to-peer
-     dynamics, a mechanism that digital platforms structurally cannot replicate.
-
-[E2] This is particularly evident in university seminar rooms, where students
-     build affinity by working together on whiteboards, navigating spontaneous
-     disagreements, and forming impromptu study groups that become lifelong
-     professional networks.
-
-[L]  Therefore, the physical classroom's irreplaceable role in cultivating
-     social capital makes full replacement by digital alternatives fundamentally
-     impossible.
+```text
+[P]  抽象立场 / 定性
+[E1] 单向因果机制（无具体例子）
+[E2] 物理实体场景（人 / 地 / 物 / 动作）
+[L]  扣回 P
 
 ---
-底层逻辑：教育母题 · 社会与情感节点 · 缺失模型 · E2实体: university seminar rooms
+底层逻辑：教育母题 · 社会与情感节点 · 缺失模型 · E2: university seminar rooms
 ```
 
 ### `/matrix` — 降维打穿器
 
-输入一个社会现象 → Agent 匹配最合适的降维模型（代际差异 / 虚拟vs实体 / 过去vs现在）→ 生成 1 个基准 PEEL + 3 道同类题的横向秒杀。**一份逻辑引擎，打穿一整类题目。**
+输入一个社会现象 → 自动匹配三大模型之一：
 
-**输入示例：**
+| 模型 | 名称 | 适用 |
+|------|------|------|
+| **A** | 代际差异 Young vs Old | 购物、App、饮食、科技态度… |
+| **B** | 物理在场 vs 虚拟 | 网课、网聊、网购、流媒体 vs 现场… |
+| **C** | 过去 vs 现在 | 社区、安静场所、沟通方式变迁… |
 
-> community relationships are weaker than in the past
-
-```
-命中模型
-Model C: 过去vs现在 — 城市化 + 数字化的双重挤压
-
-底层骨架
-- 过去：tight-knit neighborhoods → frequent spontaneous interactions
-- 现在：urban sprawl + digital saturation → isolated city dwellers
-
-基准 PEEL
-[P] ... [E1] ... [E2] ... [L] ...
-
-横向秒杀 ×3
-题1: Were communities stronger in the past?
-题2: Why don't city neighbors know each other?
-题3: Is tech making us more or less connected?
-
-逻辑同构说明
-三题共用一个不变机制："物理居住密度与心理连接密度的反比"；
-仅 E2 实体从"邻里"替换为"城市居民"和"科技用户"。
-```
+输出：命中模型 + 底层骨架 + 基准 PEEL + **横向秒杀 3 道同类题** + 逻辑同构说明。
 
 ### `/wizard` — 基准剧本生成器
 
-Agent 先反问 3–4 个关于你真实生活的细节问题，再从你的回答中提取 E2 实体，生成**完全属于你自己的母剧本 PEEL**，目的是用3-4个基准故事，设计出所有故事的答案，这部分承担一部分part2的内容，作为你口语内容的地基和引导。
+Agent 先反问 3–4 个关于你真实生活的细节，再提取 E2 实体，生成**完全属于你自己的母剧本 PEEL**。
 
-```
-用户: /wizard 教育+科技题库
+目的：用 3–4 个基准故事覆盖尽可能多的题库答案；同时可承担一部分 **Part 2** 内容底座，作为口语素材的地基与引导。
 
-Agent:
-1. 你最后一次和陌生人面对面聊超过5分钟是在哪？
-2. 你手机里最长一次连续刷短视频是多久？什么App？
-3. 你家乡有没有一条小时候安静、现在被商场覆盖的路？
-4. 你父母和你付学费/选专业时最常吵架的场景是？
+1. Agent 先问 **3–4 个**生活细节（不先写 PEEL）  
+2. 你回答后 → 用你的细节做 E2 → 生成 3–4 套**属于你的**母剧本  
+3. 附题库路由表：你的细节 → 母题 → 可横向秒杀题型  
 
-用户: （回答后…）
+E2 最难的不是「想不出高大上的例子」，而是大脑空白。`/wizard` 把你的生活直接武器化。
 
-Agent:
-母剧本 ×3
+### `/score` — PEEL 质检
 
-剧本1
-[P] The absence of physical interaction in purely digital learning...
-[E1] ...
-[E2] （使用你提到的具体生活场景）
-[L]  ...
+粘贴自己的 PEEL（带标签或四行）→ 冷酷检查：
 
-题库路由映射表
-| 你的细节       | 命中母题 | 可横向秒杀题型 |
-|----------------|----------|----------------|
-| 独自刷网课     | 教育/科技 | 网课能否取代实体课 |
-| 被商场覆盖的路 | 城市化   | 安静场所是否变少 |
-```
+- 是否缺层 / 禁用连接词  
+- P 是否混进举例或过长因果  
+- E2 是否缺少物理实体  
+- L 是否过长或引入新观点  
 
-**为什么这一步很重要？** E2 最难的环节不是"想不出高大上的例子" — 是"大脑一片空白"。`/wizard` 把你自己的生活直接武器化。
+Playground 下 `/score` **可不填 API Key**（纯程序质检）。
 
 ---
 
-## 思维方式指南：如何正确使用这个工具
+## 思维方式指南
 
-> **请带着以下 5 条认知用 PEEL Hacker，否则你会把它用成花哨翻译器。**
+> 带着这 5 条用 Skill，否则你会把它用成花哨翻译器。
 
-### 1. 拿到任何题目，先问"归哪个母题？"
+1. **先归母题，再写理由** — 9 个抽屉调取节点，不是空想  
+2. **P 要抽象到有方向，但不能空** — 禁止在 P 里写 E1  
+3. **E1 强制 `A → [中间齿轮] → B`** — 禁止「污染对环境不好」式同义反复  
+4. **E2 物理到毛孔** — `people` → `kindergarteners in underfunded rural public schools`  
+5. **口语 Part 3 = 写作 Task 2 同一骨架** — 只换语气壳  
 
-不要想理由。先归类。9 个抽屉：
-
-| 教育 | 科技 | 环境 | 犯罪 | 政府 | 媒体 | 城市化 | 社会 | 健康 |
-|------|------|------|------|------|------|--------|------|------|
-
-每个母题下有 4 个万能逻辑节点。你不是在想理由 — 你是在**调取理由**。
-
-### 2. P 句要"抽象到让人想读，但不能空"
-
-- ✅ `The absence of regular PE in schools breeds a generation with compromised cardiovascular fitness.`（有方向，没展开）
-- ❌ `Exercise is very important for children.`（什么都没说）
-- ❌ 不要在 P 句里写 E1 — 那是 P/E1 混在一起，考官扣分点
-
-### 3. E1 是灵魂 — 强制填空"A → [中间齿轮] → B"
-
-不能是 `A → B`，必须有一个**看得见的过程**。
-
-- ❌ `Pollution harms the environment.`
-- ✅ `Industrial effluent seeps into groundwater, poisoning the food chain at its base and triggering a cascade of species extinction.`
-
-### 4. E2 要"物理到毛孔"
-
-远离空洞词汇：`people` / `society` / `technology` — 它们没有画面感。
-
-- `people` → `kindergarteners in underfunded rural public schools`
-- `technology` → `facial recognition cameras at automated supermarket checkouts`
-- `bad traffic` → `gridlocked intersections at 8 AM with exhaust pipes of private vehicles`
-
-**检验标准：闭上眼能不能看到那个场景？**
-
-### 5. 口语 Part 3 和写作 Task 2 是同一个东西
-
-| 场景 | 表达风格 |
-|------|----------|
-| 写作 PEEL | `The most compelling justification lies in...` |
-| 口语 PEEL | `Well, to be honest, it basically boils down to...` |
-
-**逻辑骨架完全一致。** 你准备了一套写作素材，同时就准备了对应口语素材。不要再分开准备。
+完整协议与词库：[`skill/references/SYSTEM_PROMPT.md`](./skill/references/SYSTEM_PROMPT.md)。
 
 ---
 
-## 快速开始
+## 仓库结构
+
+```text
+ielts-peel-hacker/
+├── skill/                            # ★ 产品本体
+│   ├── SKILL.md                      # Agent 入口
+│   ├── README.md
+│   └── references/
+│       ├── SYSTEM_PROMPT.md          # 完整系统协议
+│       ├── e2-entities.json          # E2 实体库
+│       ├── models.json               # 三大降维模型
+│       └── keywords.json             # 母题关键词
+├── .grok/skills/ielts-peel-hacker/   # 项目内 Skill 镜像
+├── Agent_System_Prompt.md            # Prompt 源（sync 到 skill）
+├── client/                           # 可选 playground UI
+├── server/                           # 可选 API + 结构化知识
+├── tests/                            # 质检 / 检索 / 解析单测
+├── docs/EVOLUTION_BLUEPRINT.md       # 架构进化蓝图
+├── scripts/
+│   ├── build-prompt.mjs
+│   └── sync-skill.mjs
+└── README.md
+```
+
+---
+
+## 可选：本地 Playground
+
+> 给作者 / 开发者自测 API 与质检用。**不是用户主界面。**  
+> 详见 [`client/README.md`](./client/README.md)。
 
 ```bash
-git clone <this-repo> peel-hacker-app && cd peel-hacker-app
-npm run install:all   # 安装依赖 + 自动从 Agent_System_Prompt.md 生成 server/systemPrompt.js
-npm run dev
+cd ielts-peel-hacker
+/usr/local/bin/npm run install:all
+/usr/local/bin/npm run dev
 ```
 
-- 前端：http://localhost:5173
-- 后端：http://localhost:3001
+| 服务 | 地址 |
+|------|------|
+| 前端 | http://localhost:5173 |
+| 后端 | http://localhost:3001 |
 
-1. 填入 API Key（OpenAI 兼容接口均可）
-2. 选择 `/peel` / `/matrix` / `/wizard`
-3. 输入题目 → **Generate** 或 `⌘/Ctrl + Enter`
+Playground 能力（进化后）：
 
----
+- BYOK：自备 OpenAI 兼容 Key（DeepSeek / 硅基流动 / Ollama…）  
+- 按需注入母题知识（不再每次灌满 8k tokens）  
+- 输出质检门禁 + 自动重试  
+- `/score` 程序化评分  
 
-## LLM 兼容列表
+若本机 `npm` 异常，请用 `/usr/local/bin/npm`，或：
 
-| 提供商 | Base URL 示例 |
-|--------|----------------|
-| OpenAI | `https://api.openai.com/v1` |
-| DeepSeek | `https://api.deepseek.com/v1` |
-| 硅基流动 | `https://api.siliconflow.cn/v1` |
-| 本地 Ollama | `http://localhost:11434/v1` |
-
-推荐模型：**DeepSeek V3** 或 **GPT-4o**。
-
----
-
-## API
-
-### `POST /api/generate`
-
-```json
-{
-  "apiKey": "sk-...",
-  "baseUrl": "https://api.openai.com/v1",
-  "model": "gpt-4o-mini",
-  "command": "peel",
-  "input": "Some people think...",
-  "history": []
-}
-```
-
-| `command` | 说明 |
-|-----------|------|
-| `peel` | 单点 PEEL 四句 + 中文底层逻辑 |
-| `matrix` | 三大模型匹配 + 横向秒杀 3 题 |
-| `wizard` | 先追问生活细节，再生成母剧本（支持多轮 `history`） |
-
----
-
-## 目录结构
-
-```
-peel-hacker-app/
-├── Agent_System_Prompt.md     # 系统提示词唯一源码 = 项目灵魂
-├── scripts/
-│   └── build-prompt.mjs       # 从 .md 抽取全文生成 server/systemPrompt.js
-├── server/
-│   ├── index.js               # Express API + 结构化解析
-│   └── systemPrompt.js        # 由 build-prompt.mjs 自动生成（勿手改）
-└── client/
-    └── src/components/
-        ├── CommandPanel.jsx   # 三种指令面板
-        ├── ResultPanel.jsx    # 结构化结果渲染
-        ├── PeelBlock.jsx      # PEEL 四句高亮组件
-        └── ApiKeyPanel.jsx     # API Key / Base URL / Model 配置
+```bash
+node node_modules/concurrently/dist/bin/concurrently.js -k -n server,client \
+  "node --watch server/index.js" \
+  "node client/node_modules/vite/bin/vite.js --config client/vite.config.js"
 ```
 
 ---
 
-## 提示词是怎么工作的（重要）
+## 开发与同步
 
-`server/systemPrompt.js` **不是手写的**，而是由 `scripts/build-prompt.mjs` 从 `Agent_System_Prompt.md` 的第一段代码块（``` ``` ``` 包裹的正文）自动抽取生成的。这样可以保证「单一事实来源」：
+```bash
+# 改 Agent_System_Prompt.md 后，同步到 skill + systemPrompt.js
+npm run sync:skill
+npm run build:prompt
 
-- 想改提示词 → 只改 `Agent_System_Prompt.md`；
-- 改完跑 `npm run build:prompt` 重新生成；
-- `install:all` 和 `build` 会自动执行它，无需手动步骤。
+# 单测
+npm test
+```
 
-如果你 fork 后修改了提示词却没重生成，服务器会用到旧版。
+CI：`.github/workflows/eval.yml` 在 push / PR 时跑单元与集成测试。
+
+架构细节见 [`docs/EVOLUTION_BLUEPRINT.md`](./docs/EVOLUTION_BLUEPRINT.md)。
 
 ---
 
 ## 安全
 
-- Key 仅存浏览器 `sessionStorage`，不落盘不写日志
-- 经本机后端转发到 LLM，中途不存储
-- 生产部署建议改服务端环境变量注入 + 加鉴权
+| 项 | 说明 |
+|----|------|
+| Skill | 无 API Key、无个人经历剧本 |
+| Playground | Key 仅浏览器 `sessionStorage`，经本机转发，不落盘 |
+| 仓库 | 请勿提交 `.env`、版权 PDF、私人对话 |
+| 公开前 | 确认未包含训练材料 PDF / 对话记录 |
 
 ---
 
 ## License
 
-MIT
+MIT — 见 [`LICENSE`](./LICENSE)。

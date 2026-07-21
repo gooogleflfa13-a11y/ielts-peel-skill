@@ -1,0 +1,89 @@
+{
+  "topic": "Health",
+  "nodes": [
+    {
+      "id": "diet_metabolism",
+      "name": "Diet & Metabolism",
+      "trigger": [
+        "obesity",
+        "junk food",
+        "sugar tax"
+      ],
+      "coreLogic": "Ultra-processed food and sugar drive chronic disease; tax and regulation are levers.",
+      "lexicon": [
+        "processed foods",
+        "sugar-laden beverages",
+        "soaring prevalence of obesity",
+        "chronic metabolic disorders"
+      ]
+    },
+    {
+      "id": "mental_burnout",
+      "name": "Mental Stress & Burnout",
+      "trigger": [
+        "stress",
+        "burnout",
+        "always-on"
+      ],
+      "coreLogic": "Cut-throat competition and always-on connectivity cause neural exhaustion.",
+      "lexicon": [
+        "occupational burnout",
+        "perpetual work-life imbalance",
+        "psychological well-being"
+      ]
+    },
+    {
+      "id": "prevention",
+      "name": "Prevention vs Treatment",
+      "trigger": [
+        "prevention better than cure",
+        "public fitness",
+        "hospital spending"
+      ],
+      "coreLogic": "Limited medical resources favor fitness and health education over hospital-only spend.",
+      "lexicon": [
+        "preventative medical interventions",
+        "holistic physical and mental well-being"
+      ]
+    },
+    {
+      "id": "physical_exertion",
+      "name": "Physical Exertion & Development",
+      "trigger": [
+        "PE classes",
+        "exercise",
+        "sport for kids"
+      ],
+      "coreLogic": "Sport builds cardio, motor coordination, and cortisol release as biological necessity.",
+      "lexicon": [
+        "cardiovascular fitness",
+        "motor coordination",
+        "sedentary lifestyle"
+      ]
+    }
+  ],
+  "e2Entities": {
+    "people": [
+      "night-shift nurses",
+      "sedentary office workers",
+      "childhood obesity patients",
+      "fitness coaches",
+      "overworked junior doctors"
+    ],
+    "scenes": [
+      "overcrowded A&E wards",
+      "24-hour gyms",
+      "school canteens serving deep-fried trays",
+      "corporate open-plan offices at midnight"
+    ],
+    "objects": [
+      "sugar-laden soft drinks",
+      "vending-machine snacks",
+      "wearable step-trackers",
+      "treadmill sessions",
+      "prescription antidepressants",
+      "blood-pressure cuffs",
+      "skipping lunch at the desk"
+    ]
+  }
+}

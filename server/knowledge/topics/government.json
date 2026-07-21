@@ -1,0 +1,92 @@
+{
+  "topic": "Government",
+  "nodes": [
+    {
+      "id": "fund_allocation",
+      "name": "Allocation of Public Funds",
+      "trigger": [
+        "arts vs hospitals",
+        "space exploration budget",
+        "public spending"
+      ],
+      "coreLogic": "Budgets are zero-sum; art/space competes with hospitals and schools.",
+      "lexicon": [
+        "allocation of public funds",
+        "resource allocation",
+        "public infrastructure"
+      ]
+    },
+    {
+      "id": "welfare_infrastructure",
+      "name": "Welfare & Infrastructure",
+      "trigger": [
+        "free healthcare",
+        "public transport",
+        "social safety net"
+      ],
+      "coreLogic": "State legitimacy rests on public goods markets under-supply.",
+      "lexicon": [
+        "comprehensive universal healthcare system",
+        "social safety net",
+        "public infrastructure"
+      ]
+    },
+    {
+      "id": "taxation",
+      "name": "Taxation Justification",
+      "trigger": [
+        "high tax",
+        "wealth gap",
+        "progressive tax"
+      ],
+      "coreLogic": "Progressive tax narrows gaps; overtax kills innovation and effort.",
+      "lexicon": [
+        "progressive taxation",
+        "narrow the wealth gap",
+        "bureaucratic inefficiency"
+      ]
+    },
+    {
+      "id": "regulation",
+      "name": "Regulation & Censorship",
+      "trigger": [
+        "food safety",
+        "media regulation",
+        "pollution regulation"
+      ],
+      "coreLogic": "Market failure on safety, media violence, and pollution requires mandatory frameworks.",
+      "lexicon": [
+        "regulatory framework",
+        "mandatory regulations",
+        "stringent legislation"
+      ]
+    }
+  ],
+  "e2Entities": {
+    "people": [
+      "middle-class taxpayers",
+      "low-income households",
+      "bureaucratic government agencies",
+      "frontline healthcare workers",
+      "local city councils",
+      "corrupt public officials",
+      "state-subsidized entrepreneurs"
+    ],
+    "scenes": [
+      "state-funded public hospitals",
+      "affordable housing estates",
+      "crumbling public libraries",
+      "space exploration agencies",
+      "NASA",
+      "local tax bureaus"
+    ],
+    "objects": [
+      "imposing heavy tariffs on imported cars",
+      "issuing monthly welfare checks",
+      "out-of-pocket medical expenses",
+      "filling out complex tax return forms",
+      "funding national museums",
+      "subsidizing renewable energy projects"
+    ]
+  }
+}

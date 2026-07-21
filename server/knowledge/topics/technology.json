@@ -1,0 +1,98 @@
+{
+  "topic": "Technology",
+  "nodes": [
+    {
+      "id": "efficiency_productivity",
+      "name": "Efficiency & Productivity",
+      "trigger": [
+        "automation",
+        "machines replace jobs",
+        "remote work",
+        "office automation"
+      ],
+      "coreLogic": "Technology strips repetitive labor and pushes throughput toward physical limits.",
+      "lexicon": [
+        "automation of manual labor",
+        "operational efficiency",
+        "mundane tasks",
+        "render human labor obsolete"
+      ]
+    },
+    {
+      "id": "social_alienation_health",
+      "name": "Social Alienation & Health",
+      "trigger": [
+        "social media loneliness",
+        "phone reduces family talk",
+        "gaming health"
+      ],
+      "coreLogic": "Virtual connection density is inversely proportional to physical presence; convenience extracts biology.",
+      "lexicon": [
+        "diminished face-to-face interaction",
+        "superficial digital connections",
+        "sedentary lifestyle",
+        "fragmented attention spans"
+      ]
+    },
+    {
+      "id": "info_security",
+      "name": "Info Democratization vs Security",
+      "trigger": [
+        "internet as library",
+        "cybercrime",
+        "privacy"
+      ],
+      "coreLogic": "Knowledge access is bait; privacy transfer, echo chambers, and cyber risk follow.",
+      "lexicon": [
+        "democratization of knowledge",
+        "information overload",
+        "cybersecurity vulnerabilities",
+        "over-reliance on algorithms"
+      ]
+    },
+    {
+      "id": "skill_obsolescence",
+      "name": "Skill Obsolescence & Unemployment",
+      "trigger": [
+        "AI unemployment",
+        "cannot write or calculate",
+        "craft disappearance"
+      ],
+      "coreLogic": "Algorithmic power causes irreversible foundational skill atrophy — tech parasitism.",
+      "lexicon": [
+        "degradation of foundational skills",
+        "stifle independent analytical thinking",
+        "skill obsolescence"
+      ]
+    }
+  ],
+  "e2Entities": {
+    "people": [
+      "Gen-Z smartphone addicts",
+      "assembly line workers",
+      "software engineers",
+      "cybercriminals",
+      "hackers",
+      "gig economy workers",
+      "food delivery riders",
+      "Silicon Valley tech giants"
+    ],
+    "scenes": [
+      "automated manufacturing plants",
+      "cashless supermarkets",
+      "centralized cloud data centers",
+      "virtual reality chatrooms",
+      "remote home offices",
+      "sweatshops"
+    ],
+    "objects": [
+      "facial recognition algorithms",
+      "autonomous driving vehicles",
+      "scrolling endlessly through short-form videos",
+      "instant push notifications",
+      "targeted pop-up ads",
+      "robotic mechanical arms",
+      "GPS navigation systems"
+    ]
+  }
+}

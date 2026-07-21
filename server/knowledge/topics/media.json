@@ -1,0 +1,87 @@
+{
+  "topic": "Media",
+  "nodes": [
+    {
+      "id": "consumerism",
+      "name": "Consumerism & Manipulation",
+      "trigger": [
+        "advertising",
+        "consumer culture",
+        "false needs"
+      ],
+      "coreLogic": "Ads manufacture anxiety and false needs rather than inform.",
+      "lexicon": [
+        "promote materialistic values",
+        "fuel a culture of consumerism",
+        "manipulative marketing strategies"
+      ]
+    },
+    {
+      "id": "misinformation",
+      "name": "Misinformation & Echo Chambers",
+      "trigger": [
+        "fake news",
+        "echo chamber",
+        "media bias"
+      ],
+      "coreLogic": "Traffic rewards conflict; algorithms harden social fracture.",
+      "lexicon": [
+        "alarming proliferation of misinformation",
+        "echo chambers",
+        "dissemination of fake news"
+      ]
+    },
+    {
+      "id": "youth_vulnerability",
+      "name": "Youth Vulnerability",
+      "trigger": [
+        "children advertising",
+        "junk food ads",
+        "media influence kids"
+      ],
+      "coreLogic": "Children lack critical defense against junk ads and toxic content.",
+      "lexicon": [
+        "psychological vulnerability of minors",
+        "materialistic values"
+      ]
+    },
+    {
+      "id": "cultural_homogenization",
+      "name": "Cultural Homogenization",
+      "trigger": [
+        "Hollywood",
+        "streaming culture",
+        "local culture loss"
+      ],
+      "coreLogic": "Global streaming erases local cultural diversity.",
+      "lexicon": [
+        "cultural diversity",
+        "national identity",
+        "cultural homogenization"
+      ]
+    }
+  ],
+  "e2Entities": {
+    "people": [
+      "impressionable toddlers",
+      "celebrity influencers on Instagram",
+      "partisan journalists",
+      "ruthless paparazzi",
+      "PR agencies",
+      "skeptical consumers"
+    ],
+    "scenes": [
+      "prime-time television broadcasts",
+      "echo chambers on social media",
+      "front pages of tabloid magazines",
+      "billboard-filled commercial streets"
+    ],
+    "objects": [
+      "click-bait headlines",
+      "junk food commercials during cartoon breaks",
+      "Photoshop-edited magazine covers",
+      "algorithm-driven content recommendations",
+      "cancelling a celebrity online"
+    ]
+  }
+}

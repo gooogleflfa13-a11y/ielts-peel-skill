@@ -1,0 +1,94 @@
+{
+  "topic": "Environment",
+  "nodes": [
+    {
+      "id": "ecological_breakdown",
+      "name": "Ecological Breakdown",
+      "trigger": [
+        "species extinction",
+        "deforestation",
+        "climate",
+        "urban sprawl nature"
+      ],
+      "coreLogic": "Earth is a fragile closed-loop; local extinction cascades into irreversible failure.",
+      "lexicon": [
+        "delicate ecological balance",
+        "species extinction",
+        "environmental degradation",
+        "destruction of natural habitats"
+      ]
+    },
+    {
+      "id": "growth_vs_conservation",
+      "name": "Growth vs Conservation",
+      "trigger": [
+        "developing countries growth first",
+        "industry vs environment"
+      ],
+      "coreLogic": "Short-term gains externalize environmental cost; long-term collapse eats the economy.",
+      "lexicon": [
+        "short-term economic gains",
+        "unsustainable exploitation",
+        "sustainable economic development"
+      ]
+    },
+    {
+      "id": "government_intervention",
+      "name": "Government Intervention",
+      "trigger": [
+        "who is responsible",
+        "carbon tax",
+        "flight prices"
+      ],
+      "coreLogic": "Individual virtue is weak; only legislation and tax can reprice harm.",
+      "lexicon": [
+        "enact stringent environmental legislation",
+        "carbon tax policies",
+        "mandatory recycling initiatives"
+      ]
+    },
+    {
+      "id": "renewable_transition",
+      "name": "Renewable Energy Transition",
+      "trigger": [
+        "fossil fuels",
+        "nuclear",
+        "solar wind"
+      ],
+      "coreLogic": "Finite fossils and lethal emissions force a painful but mandatory energy matrix rebuild.",
+      "lexicon": [
+        "finite fossil fuels",
+        "renewable energy sources",
+        "green technologies"
+      ]
+    }
+  ],
+  "e2Entities": {
+    "people": [
+      "multinational oil corporations",
+      "indigenous tribes in the Amazon",
+      "grassroots environmental activists",
+      "local fishermen",
+      "endangered marine species",
+      "sea turtles",
+      "poaching syndicates"
+    ],
+    "scenes": [
+      "melting polar ice caps",
+      "expanding Saharan deserts",
+      "heavily polluted coastal megacities",
+      "offshore wind farms",
+      "nuclear power plants",
+      "toxic landfills"
+    ],
+    "objects": [
+      "single-use plastic packaging",
+      "untreated industrial effluent",
+      "exhaust fumes from diesel engines",
+      "installing rooftop solar panels",
+      "sorting household garbage",
+      "coral reef bleaching",
+      "carbon offset programs"
+    ]
+  }
+}

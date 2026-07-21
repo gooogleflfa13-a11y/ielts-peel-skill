@@ -2,17 +2,21 @@
   "name": "ielts-peel-hacker",
   "version": "1.0.0",
   "private": true,
-  "description": "IELTS PEEL Hacker — AI writing assistant agent (Vite React + Tailwind + Node.js)",
+  "description": "IELTS PEEL Hacker — Skill-first PEEL logic engine for Writing Task 2 / Speaking Part 3 (optional local playground)",
   "scripts": {
     "build:prompt": "node scripts/build-prompt.mjs",
-    "dev": "concurrently \"npm run dev:server\" \"npm run dev:client\"",
-    "dev:server": "npm run dev --prefix server",
-    "dev:client": "npm run dev --prefix client",
-    "install:all": "npm install && npm install --prefix server && npm install --prefix client && npm run build:prompt",
-    "build": "npm run build:prompt && npm run build --prefix client",
-    "start": "npm run start --prefix server"
+    "sync:skill": "node scripts/sync-skill.mjs",
+    "dev": "concurrently -k -n server,client -c blue,green \"node --watch server/index.js\" \"node client/node_modules/vite/bin/vite.js --config client/vite.config.js\"",
+    "dev:server": "node --watch server/index.js",
+    "dev:client": "node client/node_modules/vite/bin/vite.js --config client/vite.config.js",
+    "install:all": "npm install && npm install --prefix server && npm install --prefix client && npm run build:prompt && npm run sync:skill",
+    "build": "npm run build:prompt && npm run sync:skill && node client/node_modules/vite/bin/vite.js build --config client/vite.config.js",
+    "start": "NODE_ENV=production node server/index.js",
+    "test": "vitest run",
+    "test:watch": "vitest"
   },
   "devDependencies": {
-    "concurrently": "^9.1.2"
+    "concurrently": "^9.1.2",
+    "vitest": "^3.0.5"
   }
 }

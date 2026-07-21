@@ -39,3 +39,11 @@ Thumbs.db
 coverage/
 .temp/
 .tmp/
+
+# Runtime user memory
+.memory/
+
+# Local study materials
+*.pdf
+*.docx
+*.rtf

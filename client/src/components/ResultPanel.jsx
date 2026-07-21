@@ -1,12 +1,21 @@
 import { useState } from 'react';
 import PeelBlock from './PeelBlock.jsx';
+import EvaluationPanel from './EvaluationPanel.jsx';
+import EntityHighlighter from './EntityHighlighter.jsx';
+import PeelEditor from './PeelEditor.jsx';
 
-export default function ResultPanel({ result, loading, error }) {
-  const [view, setView] = useState('structured'); // structured | raw
+export default function ResultPanel({
+  result,
+  loading,
+  error,
+  onRevalidate,
+  revalidating,
+}) {
+  const [view, setView] = useState('structured'); // structured | raw | edit
 
   const peels = result?.parsed?.peels || [];
   const meta = result?.parsed?.meta;
-  const model = result?.parsed?.model;
+  const model = result?.parsed?.model || result?.reductionModel;
   const raw = result?.content || '';
 
   const copyAll = async () => {
@@ -26,20 +35,18 @@ export default function ResultPanel({ result, loading, error }) {
           {result && (
             <>
               <div className="flex rounded-lg border border-white/10 p-0.5 text-[11px]">
-                <button
-                  type="button"
-                  className={`rounded-md px-2.5 py-1 ${view === 'structured' ? 'bg-white/10 text-white' : 'text-slate-400'}`}
-                  onClick={() => setView('structured')}
-                >
-                  结构化
-                </button>
-                <button
-                  type="button"
-                  className={`rounded-md px-2.5 py-1 ${view === 'raw' ? 'bg-white/10 text-white' : 'text-slate-400'}`}
-                  onClick={() => setView('raw')}
-                >
-                  原文
-                </button>
+                {['structured', 'edit', 'raw'].map((v) => (
+                  <button
+                    key={v}
+                    type="button"
+                    className={`rounded-md px-2.5 py-1 ${
+                      view === v ? 'bg-white/10 text-white' : 'text-slate-400'
+                    }`}
+                    onClick={() => setView(v)}
+                  >
+                    {v === 'structured' ? '结构化' : v === 'edit' ? '编辑' : '原文'}
+                  </button>
+                ))}
               </div>
               <button type="button" className="btn-ghost !py-1.5 text-[11px]" onClick={copyAll}>
                 复制全文
@@ -66,7 +73,7 @@ export default function ResultPanel({ result, loading, error }) {
         <div className="flex flex-1 flex-col items-center justify-center gap-2 text-center text-slate-500">
           <div className="font-mono text-3xl text-white/10">[P][E1][E2][L]</div>
           <p className="max-w-xs text-sm">配置 API Key → 选择指令 → 输入题目 → Generate</p>
-          <p className="text-[11px]">输出将按 PEEL 四层与中文底层逻辑解析展示</p>
+          <p className="text-[11px]">/score 可无 Key · 输出含质量门禁与实体高亮</p>
         </div>
       )}
 
@@ -76,24 +83,73 @@ export default function ResultPanel({ result, loading, error }) {
             <span className="rounded border border-white/10 px-2 py-0.5 font-mono text-acid-400/90">
               /{result.command}
             </span>
-            <span className="rounded border border-white/10 px-2 py-0.5 font-mono">{result.model}</span>
+            {result.model && (
+              <span className="rounded border border-white/10 px-2 py-0.5 font-mono">
+                {result.model}
+              </span>
+            )}
             {result.usage && (
               <span className="rounded border border-white/10 px-2 py-0.5">
                 tokens: {result.usage.total_tokens ?? '—'}
               </span>
             )}
+            {result.latencyMs != null && (
+              <span className="rounded border border-white/10 px-2 py-0.5">
+                {result.latencyMs}ms
+              </span>
+            )}
           </div>
+
+          {result.validation && (
+            <EvaluationPanel
+              validation={result.validation}
+              weak={result.weak}
+              topic={result.topic}
+              retries={result.retries}
+            />
+          )}
+
+          {result.entities?.length > 0 && (
+            <div className="rounded-lg border border-white/10 bg-ink-950/40 px-3 py-2">
+              <div className="mb-1.5 text-[10px] font-semibold uppercase tracking-wider text-slate-500">
+                E2 Entities
+              </div>
+              <EntityHighlighter entities={result.entities} />
+            </div>
+          )}
+
+          {result.semantic && (
+            <div className="rounded-lg border border-violet-400/20 bg-violet-400/5 px-3 py-2 text-sm">
+              <span className="font-mono text-xs text-violet-300">AI SEMANTIC</span>
+              <p className="mt-1 text-slate-300">
+                overall {result.semantic.overall} · P {result.semantic.P_score} · E1{' '}
+                {result.semantic.E1_score} · E2 {result.semantic.E2_score} · L{' '}
+                {result.semantic.L_score}
+              </p>
+              {result.semantic.topIssue && (
+                <p className="mt-1 text-[11px] text-slate-400">{result.semantic.topIssue}</p>
+              )}
+            </div>
+          )}
 
           {view === 'raw' ? (
             <pre className="whitespace-pre-wrap rounded-xl border border-white/10 bg-ink-950/70 p-4 font-mono text-[13px] leading-relaxed text-slate-200">
               {raw}
             </pre>
+          ) : view === 'edit' && peels[0] ? (
+            <PeelEditor
+              peel={peels[0]}
+              saving={revalidating}
+              onSave={(lines) => onRevalidate?.(lines)}
+            />
           ) : (
             <>
-              {model && (
+              {model && (model.label || model.name) && (
                 <div className="rounded-lg border border-violet-400/20 bg-violet-400/5 px-3 py-2 text-sm">
-                  <span className="font-mono text-xs text-violet-300">MODEL {model.id}</span>
-                  <p className="mt-1 text-slate-300">{model.label}</p>
+                  <span className="font-mono text-xs text-violet-300">
+                    MODEL {model.id || ''}
+                  </span>
+                  <p className="mt-1 text-slate-300">{model.label || model.name}</p>
                 </div>
               )}
 

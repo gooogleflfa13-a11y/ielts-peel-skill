@@ -1,0 +1,20 @@
+[
+  {
+    "id": "case_01_education_social",
+    "input": "Some people think online education can replace traditional classrooms. To what extent do you agree or disagree?",
+    "expectedTopic": "Education",
+    "constraints": {
+      "P_forbidden": ["for example", "such as"],
+      "bannedDiscourse": ["First of all", "Secondly", "In conclusion"],
+      "sentenceCount": 4
+    }
+  },
+  {
+    "id": "case_02_tech_alienation",
+    "input": "Social media is making people more lonely. Do you agree?",
+    "expectedTopic": "Technology",
+    "constraints": {
+      "P_forbidden": ["for example"]
+    }
+  }
+]

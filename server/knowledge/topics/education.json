@@ -1,0 +1,116 @@
+{
+  "topic": "Education",
+  "nodes": [
+    {
+      "id": "social_emotional",
+      "name": "Social & Emotional",
+      "trigger": [
+        "online vs offline class",
+        "boarding vs day school",
+        "arts vs STEM",
+        "PE necessity",
+        "teacher irreplaceability"
+      ],
+      "coreLogic": "Education is fundamentally human socialization; machines and pure theory cannot supply empathy and teamwork skills.",
+      "lexicon": [
+        "cultivate empathy",
+        "interpersonal communication skills",
+        "instill moral values",
+        "digitalization of pedagogy",
+        "distance learning modules",
+        "equitable resource allocation",
+        "enhance employability",
+        "alleviate financial constraints",
+        "vocational training",
+        "stimulate intellectual curiosity",
+        "extracurricular activities",
+        "dismantle geographical barriers",
+        "critical thinking capacities",
+        "rote memorization",
+        "holistic development"
+      ]
+    },
+    {
+      "id": "pragmatic_economic",
+      "name": "Pragmatic & Economic",
+      "trigger": [
+        "university theory vs vocational skills",
+        "who pays tuition",
+        "student part-time jobs"
+      ],
+      "coreLogic": "Education must serve labor markets and household finance, solving individual financial pain and national workforce needs.",
+      "lexicon": [
+        "enhance employability",
+        "alleviate financial constraints",
+        "vocational training",
+        "labor market demands",
+        "pragmatic skills"
+      ]
+    },
+    {
+      "id": "cognitive_innovative",
+      "name": "Cognitive & Innovative",
+      "trigger": [
+        "rote learning vs inquiry",
+        "streaming by grades",
+        "extracurricular value",
+        "liberal arts"
+      ],
+      "coreLogic": "Critical thinking and holistic development always trump mechanical memorization and single-test scores.",
+      "lexicon": [
+        "critical thinking capacities",
+        "intellectual curiosity",
+        "holistic development",
+        "rote memorization",
+        "extracurricular activities"
+      ]
+    },
+    {
+      "id": "equity_accessibility",
+      "name": "Equity & Accessibility",
+      "trigger": [
+        "rural vs urban education gap",
+        "free university",
+        "remote education benefits"
+      ],
+      "coreLogic": "Technology and government subsidies matter most in breaking privilege and achieving educational egalitarianism.",
+      "lexicon": [
+        "equitable resource allocation",
+        "egalitarian access",
+        "dismantle geographical barriers",
+        "marginalized communities"
+      ]
+    }
+  ],
+  "e2Entities": {
+    "people": [
+      "kindergarteners",
+      "rebellious teenagers",
+      "high-achieving undergraduates",
+      "special needs students",
+      "strict disciplinarians",
+      "helicopter parents",
+      "university alumni",
+      "school dropouts"
+    ],
+    "scenes": [
+      "underfunded rural public schools",
+      "elite boarding schools",
+      "vocational training centers",
+      "MOOCs",
+      "campus laboratories",
+      "university dormitories"
+    ],
+    "objects": [
+      "interactive whiteboards",
+      "rote-learning flashcards",
+      "standardized test scores",
+      "peer-review sessions",
+      "group presentations",
+      "hands-on experiments",
+      "heavy backpacks",
+      "astronomical tuition fee loans",
+      "extracurricular sports clubs"
+    ]
+  }
+}

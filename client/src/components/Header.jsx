@@ -17,6 +17,7 @@ export default function Header() {
         <span className="rounded border border-white/10 bg-ink-800 px-2 py-1">/peel</span>
         <span className="rounded border border-white/10 bg-ink-800 px-2 py-1">/matrix</span>
         <span className="rounded border border-white/10 bg-ink-800 px-2 py-1">/wizard</span>
+        <span className="rounded border border-white/10 bg-ink-800 px-2 py-1">/score</span>
       </div>
     </header>
   );

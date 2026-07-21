@@ -1,0 +1,47 @@
+{
+  "Education": {
+    "people": ["kindergarteners", "rebellious teenagers", "high-achieving undergraduates", "special needs students", "strict disciplinarians", "helicopter parents", "university alumni", "school dropouts"],
+    "scenes": ["underfunded rural public schools", "elite boarding schools", "vocational training centers", "MOOCs", "campus laboratories", "university dormitories"],
+    "objects": ["interactive whiteboards", "rote-learning flashcards", "standardized test scores", "peer-review sessions", "group presentations", "hands-on experiments", "heavy backpacks", "astronomical tuition fee loans", "extracurricular sports clubs"]
+  },
+  "Technology": {
+    "people": ["Gen-Z smartphone addicts", "assembly line workers", "software engineers", "cybercriminals", "hackers", "gig economy workers", "food delivery riders", "Silicon Valley tech giants"],
+    "scenes": ["automated manufacturing plants", "cashless supermarkets", "centralized cloud data centers", "virtual reality chatrooms", "remote home offices", "sweatshops"],
+    "objects": ["facial recognition algorithms", "autonomous driving vehicles", "scrolling endlessly through short-form videos", "instant push notifications", "targeted pop-up ads", "robotic mechanical arms", "GPS navigation systems"]
+  },
+  "Environment": {
+    "people": ["multinational oil corporations", "indigenous tribes in the Amazon", "grassroots environmental activists", "local fishermen", "endangered marine species", "sea turtles", "poaching syndicates"],
+    "scenes": ["melting polar ice caps", "expanding Saharan deserts", "heavily polluted coastal megacities", "offshore wind farms", "nuclear power plants", "toxic landfills"],
+    "objects": ["single-use plastic packaging", "untreated industrial effluent", "exhaust fumes from diesel engines", "installing rooftop solar panels", "sorting household garbage", "coral reef bleaching", "carbon offset programs"]
+  },
+  "Crime": {
+    "people": ["first-time petty offenders", "repeat felons", "juvenile delinquents", "white-collar embezzlers", "armed police patrols", "parole officers", "innocent bystanders"],
+    "scenes": ["overcrowded maximum-security prisons", "juvenile detention centers", "impoverished urban ghettos", "high-tech surveillance control rooms", "local courthouses"],
+    "objects": ["ubiquitous CCTV cameras", "mandatory community service", "cleaning streets", "criminal background checks for employment", "shoplifting groceries", "cyber fraud", "phishing emails", "anti-theft alarm systems"]
+  },
+  "Government": {
+    "people": ["middle-class taxpayers", "low-income households", "bureaucratic government agencies", "frontline healthcare workers", "local city councils", "corrupt public officials", "state-subsidized entrepreneurs"],
+    "scenes": ["state-funded public hospitals", "affordable housing estates", "crumbling public libraries", "space exploration agencies", "NASA", "local tax bureaus"],
+    "objects": ["imposing heavy tariffs on imported cars", "issuing monthly welfare checks", "out-of-pocket medical expenses", "filling out complex tax return forms", "funding national museums", "subsidizing renewable energy projects"]
+  },
+  "Media": {
+    "people": ["impressionable toddlers", "celebrity influencers on Instagram", "partisan journalists", "ruthless paparazzi", "PR agencies", "skeptical consumers"],
+    "scenes": ["prime-time television broadcasts", "echo chambers on social media", "front pages of tabloid magazines", "billboard-filled commercial streets"],
+    "objects": ["click-bait headlines", "junk food commercials during cartoon breaks", "Photoshop-edited magazine covers", "algorithm-driven content recommendations", "cancelling a celebrity online"]
+  },
+  "Urbanization": {
+    "people": ["exhausted daily commuters", "rural migrant workers", "aggressive real estate developers", "traffic wardens", "pedestrians", "cyclists"],
+    "scenes": ["subterranean subway networks", "suburban satellite towns", "pedestrian-only commercial districts", "gridlocked intersections", "high-rise residential complexes", "sprawling shantytowns", "car-sharing parking lots"],
+    "objects": ["exorbitant property prices", "exhaust pipes of private vehicles", "swiping electronic travel cards", "missing a connecting train", "paying downtown congestion charges", "building elevated highways"]
+  },
+  "Society": {
+    "people": ["retired senior citizens", "dual-income parents", "indigenous tribal elders", "expatriates", "immigrants", "ethnic minorities", "male-dominated corporate boardrooms", "stay-at-home fathers"],
+    "scenes": ["state-funded nursing homes", "historical ruins and monuments", "multicultural immigrant neighborhoods", "traditional local festivals", "maternity wards in hospitals"],
+    "objects": ["speaking regional dialects", "wearing traditional garments", "paying exorbitant childcare fees", "breaking the glass ceiling", "implementing maternity and paternity leave policies", "generational wealth transfer"]
+  },
+  "Health": {
+    "people": ["night-shift nurses", "sedentary office workers", "childhood obesity patients", "fitness coaches", "overworked junior doctors"],
+    "scenes": ["overcrowded A&E wards", "24-hour gyms", "school canteens serving deep-fried trays", "corporate open-plan offices at midnight"],
+    "objects": ["sugar-laden soft drinks", "vending-machine snacks", "wearable step-trackers", "treadmill sessions", "prescription antidepressants", "blood-pressure cuffs", "skipping lunch at the desk"]
+  }
+}

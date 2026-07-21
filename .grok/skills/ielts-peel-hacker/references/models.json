@@ -1,0 +1,93 @@
+{
+  "A": {
+    "name": "Generational Divide (Young vs Old)",
+    "trigger": [
+      "shopping",
+      "apps",
+      "food",
+      "leisure",
+      "travel",
+      "language learning",
+      "tech attitude",
+      "smiling reasons",
+      "age contrast",
+      "young",
+      "old",
+      "elderly",
+      "generation"
+    ],
+    "axes": {
+      "pace": {
+        "young": "instant gratification, digital natives, fast-paced fragmented streams",
+        "old": "tangible experience, slow-paced immersive traditional modes"
+      },
+      "value": {
+        "young": "peer pressure, self-display, trends, fashion",
+        "old": "interpersonal connection, nostalgia, durability"
+      },
+      "health": {
+        "young": "risk for taste/experience, processed foods, sleep debt",
+        "old": "preventative health, avoid chronic metabolic disorders"
+      }
+    },
+    "skeleton": "Well, there's a profound generational divide here, mainly driven by their different priorities in life. While the youth tend to... the elderly usually..."
+  },
+  "B": {
+    "name": "Digital vs Physical (Presence vs Simulation)",
+    "trigger": [
+      "online vs campus",
+      "chat vs face-to-face",
+      "e-news vs paper",
+      "e-commerce vs stores",
+      "streaming vs live concert",
+      "online",
+      "virtual",
+      "physical classroom",
+      "face to face"
+    ],
+    "axes": {
+      "sensory": {
+        "physical": "tangible texture, sanctuary from digital distractions, uninterrupted focus",
+        "digital": "cold pixels, pop-up interference, fragmented attention"
+      },
+      "microSignals": {
+        "physical": "subtle non-verbal cues, genuine empathy, emotional resonance",
+        "digital": "filters out eye contact, micro-expressions, presence"
+      },
+      "collectiveEnergy": {
+        "physical": "contagious energy, collective catharsis, societal cohesion",
+        "digital": "psychological isolation, no emotional community exchange"
+      }
+    },
+    "skeleton": "Personally, I highly doubt it. While digital alternatives offer undeniable conveniences, physical mediums possess an intrinsic value that cannot be replaced."
+  },
+  "C": {
+    "name": "Past vs Present (Paradigm Shift)",
+    "trigger": [
+      "quieter places gone",
+      "communication change",
+      "gifts change",
+      "community bonds",
+      "stricter norms",
+      "social rules evolution",
+      "in the past",
+      "nowadays",
+      "used to"
+    ],
+    "axes": {
+      "tech": {
+        "past": "slow-paced, tangible, physical texture",
+        "present": "instantaneous, digital, fragmented, screen-mediated"
+      },
+      "urban": {
+        "past": "tranquil, near nature, open spaces",
+        "present": "overcrowded, sensory overload, concrete jungles"
+      },
+      "consumption": {
+        "past": "scarcity, durability, repair culture",
+        "present": "surplus, disposability, throwaway consumerism"
+      }
+    },
+    "skeleton": "Well, there's been a massive paradigm shift. Back in the day, people used to [past state]. However, nowadays, we are increasingly witnessing [present state]."
+  }
+}
