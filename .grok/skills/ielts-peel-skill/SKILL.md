@@ -1,5 +1,5 @@
 ---
-name: ielts-peel-hacker
+name: ielts-peel-skill
 description: >
   Cold PEEL logic engine for IELTS Writing Task 2 body paragraphs and Speaking Part 3.
   Generates locked [P]-[E1]-[E2]-[L] arguments, matrix kill-lists, and personal wizard scripts.

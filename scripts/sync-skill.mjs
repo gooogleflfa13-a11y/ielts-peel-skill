@@ -29,9 +29,9 @@ console.log(`[sync-skill] SYSTEM_PROMPT.md (${body.length} chars)`);
 
 const skillSrc = path.join(ROOT, 'skill');
 const mirrors = [
-  path.join(ROOT, '.grok/skills/ielts-peel-hacker'),
-  path.join(process.env.HOME || '', '.grok/skills/ielts-peel-hacker'),
-  path.join(process.env.HOME || '', '.agents/skills/ielts-peel-hacker'),
+  path.join(ROOT, '.grok/skills/ielts-peel-skill'),
+  path.join(process.env.HOME || '', '.grok/skills/ielts-peel-skill'),
+  path.join(process.env.HOME || '', '.agents/skills/ielts-peel-skill'),
 ].filter((p) => p && !p.startsWith(path.sep + path.sep));
 
 for (const dest of mirrors) {

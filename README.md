@@ -86,22 +86,22 @@ PEEL Hacker 把观点编码成四层可执行结构：
 ### 方式 A — 复制 Skill 包（Grok / Claude Code / Cursor 等）
 
 ```bash
-git clone https://github.com/gooogleflfa13-a11y/ielts-peel-hacker.git
-cd ielts-peel-hacker
+git clone https://github.com/gooogleflfa13-a11y/ielts-peel-skill.git
+cd ielts-peel-skill
 
 # 用户级（本机全局）
-cp -R skill ~/.grok/skills/ielts-peel-hacker
+cp -R skill ~/.grok/skills/ielts-peel-skill
 # 或
-cp -R skill ~/.agents/skills/ielts-peel-hacker
+cp -R skill ~/.agents/skills/ielts-peel-skill
 
 # 项目级
-mkdir -p .grok/skills && cp -R skill .grok/skills/ielts-peel-hacker
+mkdir -p .grok/skills && cp -R skill .grok/skills/ielts-peel-skill
 ```
 
 调用示例：
 
 ```text
-/ielts-peel-hacker
+/ielts-peel-skill
 /peel Some people think online education can replace traditional classrooms.
 /matrix community relationships are weaker than in the past
 /wizard 教育+科技题库
@@ -120,7 +120,7 @@ mkdir -p .grok/skills && cp -R skill .grok/skills/ielts-peel-hacker
 | 路径 | 说明 |
 |------|------|
 | `skill/` | 可移植产品包 |
-| `.grok/skills/ielts-peel-hacker/` | 仓库内 Grok Skill |
+| `.grok/skills/ielts-peel-skill/` | 仓库内 Grok Skill |
 | `Agent_System_Prompt.md` | System Prompt 源文件（改完后 `npm run sync:skill`） |
 
 ---
@@ -432,7 +432,7 @@ Focus: **交通拥堵** (P2) · Mother: Urbanization · ref:`p2_…`
 ## 仓库结构
 
 ```text
-ielts-peel-hacker/
+ielts-peel-skill/
 ├── skill/                            # ★ 产品本体
 │   ├── SKILL.md                      # Agent 入口
 │   ├── README.md
@@ -441,7 +441,7 @@ ielts-peel-hacker/
 │       ├── e2-entities.json          # E2 实体库
 │       ├── models.json               # 三大降维模型
 │       └── keywords.json             # 母题关键词
-├── .grok/skills/ielts-peel-hacker/   # 项目内 Skill 镜像
+├── .grok/skills/ielts-peel-skill/   # 项目内 Skill 镜像
 ├── Agent_System_Prompt.md            # Prompt 源（sync 到 skill）
 ├── client/                           # 可选 playground UI
 ├── server/                           # 可选 API + 结构化知识
@@ -461,7 +461,7 @@ ielts-peel-hacker/
 > 详见 [`client/README.md`](./client/README.md)。
 
 ```bash
-cd ielts-peel-hacker
+cd ielts-peel-skill
 /usr/local/bin/npm run install:all
 /usr/local/bin/npm run dev
 ```

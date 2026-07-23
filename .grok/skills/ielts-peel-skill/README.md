@@ -18,13 +18,13 @@ Copy or symlink this folder:
 
 ```bash
 # User-wide (Grok)
-cp -R skill ~/.grok/skills/ielts-peel-hacker
+cp -R skill ~/.grok/skills/ielts-peel-skill
 
 # Or project-scoped
-cp -R skill .grok/skills/ielts-peel-hacker
+cp -R skill .grok/skills/ielts-peel-skill
 ```
 
-Then invoke: `/ielts-peel-hacker` or natural language like “用 PEEL 写这道雅思大作文”.
+Then invoke: `/ielts-peel-skill` or natural language like “用 PEEL 写这道雅思大作文”.
 
 ### Raw LLM system prompt
 
