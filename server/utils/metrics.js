@@ -40,7 +40,7 @@ export function recordPeel({ topicId, tokens = 0, latency = 0, passed = true, co
   if (topicId) {
     metrics.topicDistribution[topicId] = (metrics.topicDistribution[topicId] || 0) + 1;
   }
-  if (!passed) metrics.peelFailed += 1;
+  if (!passed && cmd === 'peel') metrics.peelFailed += 1;
 
   metrics.latencyMs.push(latency);
   if (metrics.latencyMs.length > 1000) metrics.latencyMs.shift();

@@ -83,6 +83,7 @@ export function handleLLMError(err) {
 /**
  * Streaming variant — async generator of text deltas.
  * Accepts either { system, user, history } or prebuilt { messages }.
+ * Has retry logic for transient 5xx/network errors (unlike the non-retry version).
  */
 export async function* streamLLM({
   apiKey,
@@ -98,18 +99,33 @@ export async function* streamLLM({
   const client = buildClient(apiKey, baseUrl);
   const msgs = buildMessages({ system, user, history, messages });
 
-  const stream = await client.chat.completions.create({
-    model,
-    messages: msgs,
-    temperature,
-    max_tokens: maxTokens,
-    stream: true,
-  });
+  let lastError = null;
+  for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
+    try {
+      const stream = await client.chat.completions.create({
+        model,
+        messages: msgs,
+        temperature,
+        max_tokens: maxTokens,
+        stream: true,
+      });
 
-  for await (const chunk of stream) {
-    const delta = chunk.choices?.[0]?.delta?.content;
-    if (delta) yield delta;
+      for await (const chunk of stream) {
+        const delta = chunk.choices?.[0]?.delta?.content;
+        if (delta) yield delta;
+      }
+      return;
+    } catch (err) {
+      lastError = err;
+      const status = err?.status || err?.response?.status || 500;
+      if (status >= 400 && status < 500) break;
+      if (attempt < MAX_RETRIES) {
+        await new Promise((r) => setTimeout(r, BASE_DELAY_MS * (attempt + 1)));
+      }
+    }
   }
+
+  throw lastError || new Error('LLM stream failed after retries');
 }
 
 /** Alias used by orchestrator stream path */

@@ -66,8 +66,8 @@ function validateGenerateBody(req, res) {
   }
 
   const inputStr = String(input || '');
-  if (inputStr.length > MAX_INPUT_CHARS * 2) {
-    apiError(res, 400, `Input too long (max ${MAX_INPUT_CHARS} effective chars).`, {
+  if (inputStr.length > MAX_INPUT_CHARS) {
+    apiError(res, 400, `Input too long (max ${MAX_INPUT_CHARS} chars).`, {
       code: 'INPUT_TOO_LONG',
     });
     return null;
@@ -248,7 +248,7 @@ if (process.env.NODE_ENV === 'production') {
   app.get('*', (req, res, next) => {
     if (req.path.startsWith('/api')) return next();
     res.sendFile(path.join(distPath, 'index.html'), (err) => {
-      if (err) next();
+      if (err && !res.headersSent) next(err);
     });
   });
 }

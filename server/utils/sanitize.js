@@ -17,8 +17,8 @@ const INJECTION_PATTERNS = [
   /你现在是(?!IELTS)/g,
 ];
 
-const EMAIL_RE = /[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/g;
-const PHONE_RE = /(?:\+?\d{1,3}[-.\s]?)?(?:\(?\d{2,4}\)?[-.\s]?)?\d{3,4}[-.\s]?\d{4}/g;
+const EMAIL_RE = /[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/;
+const PHONE_RE = /(?:\+?\d{1,3}[-.\s]?)?(?:\(?\d{2,4}\)?[-.\s]?)?\d{3,4}[-.\s]?\d{4}/;
 
 /**
  * @param {string} input
@@ -53,6 +53,8 @@ export function sanitizeFuelText(text, { maxLen = 300 } = {}) {
   let s = String(text ?? '').trim();
   if (s.length < 8) return null;
   if (s.length > maxLen) s = s.slice(0, maxLen);
+  EMAIL_RE.lastIndex = 0;
+  PHONE_RE.lastIndex = 0;
   if (EMAIL_RE.test(s) || PHONE_RE.test(s)) return null;
   // reject obvious injection into fuel store
   const { clean, warnings } = sanitizeUserInput(s, { maxLen });
