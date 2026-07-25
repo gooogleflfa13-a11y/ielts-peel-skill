@@ -123,6 +123,15 @@ for fi in range(TOTAL_FRAMES):
             draw.text((x2 + 1, y2 + 1), text, font=font_mono_xs, fill=(0, 0, 0))
             draw.text((x2, y2), text, font=font_mono_xs, fill=cc)
 
+    if t >= 0.5:
+        ab = min(1, (t - 0.5) / 0.4)
+        credit = "by mixxmks"
+        cb = draw.textbbox((0, 0), credit, font=font_mono_xs)
+        cw = cb[2] - cb[0]
+        cc = tuple(int(120 * ab) for _ in range(3))
+        draw.text((W - cw - 18 + 1, H - 28 + 1), credit, font=font_mono_xs, fill=(0, 0, 0))
+        draw.text((W - cw - 18, H - 28), credit, font=font_mono_xs, fill=cc)
+
     frames.append(img)
 
 frames[0].save(
