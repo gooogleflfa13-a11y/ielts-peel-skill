@@ -2,6 +2,10 @@
 
 # IELTS PEEL Hacker
 
+**Stop memorizing. Start hacking.**  
+IELTS rewards logic, not vocabulary. PEEL Hacker is a cold forensic engine that locks every argument into `[P]→[E1]→[E2]→[L]` — causal chains, not word salads.  
+*Agent Skill · System Prompt · Local Playground*
+
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](./LICENSE)
 
 <p align="center">
@@ -15,8 +19,8 @@
 
 ## English
 
-> **The product is the Skill** — a cold logic engine for IELTS Writing Task 2 body paragraphs and Speaking Part 3.  
-> Generates locked `[P] → [E1] → [E2] → [L]` causal arguments instead of piling up discourse glue.
+> **Stop memorizing. Start hacking.**  
+> IELTS rewards causal logic, not GRE vocabulary. This skill encodes every argument into a locked `[P]→[E1]→[E2]→[L]` chain — no fluff, no glue, no mercy.
 
 ### 30-Second Overview
 
