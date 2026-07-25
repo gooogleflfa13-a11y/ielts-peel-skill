@@ -70,9 +70,6 @@ for fi in range(TOTAL_FRAMES):
             c = alpha_blend(BG, gc, a)
             draw.ellipse([gx - r, gy - r, gx + r, gy + r], fill=c, outline=None)
 
-    if t >= 0:
-        a = min(1, t / 0.3)
-        draw_c(draw, "COLD LOGIC ENGINE", font_mono, 72, WHITE, 0.3 * a)
     if t >= 0.3:
         a = min(1, (t - 0.3) / 0.3)
         draw_c(draw, "IELTS PEEL HACKER", font_display, 115, GREEN, a)
@@ -123,14 +120,12 @@ for fi in range(TOTAL_FRAMES):
             draw.text((x2 + 1, y2 + 1), text, font=font_mono_xs, fill=(0, 0, 0))
             draw.text((x2, y2), text, font=font_mono_xs, fill=cc)
 
-    if t >= 0.5:
-        ab = min(1, (t - 0.5) / 0.4)
-        credit = "by mixxmks"
-        cb = draw.textbbox((0, 0), credit, font=font_mono_xs)
-        cw = cb[2] - cb[0]
-        cc = tuple(int(120 * ab) for _ in range(3))
-        draw.text((W - cw - 18 + 1, H - 28 + 1), credit, font=font_mono_xs, fill=(0, 0, 0))
-        draw.text((W - cw - 18, H - 28), credit, font=font_mono_xs, fill=cc)
+    credit = "author: mixxmks"
+    cb = draw.textbbox((0, 0), credit, font=font_mono_sm)
+    cw = cb[2] - cb[0]
+    ch = cb[3] - cb[1]
+    draw.text((W - cw - 16, H - ch - 12), credit, font=font_mono_sm, fill=(0, 0, 0))
+    draw.text((W - cw - 18, H - ch - 14), credit, font=font_mono_sm, fill=(160, 160, 160))
 
     frames.append(img)
 
