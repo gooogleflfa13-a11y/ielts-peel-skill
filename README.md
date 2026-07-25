@@ -1,4 +1,4 @@
-<img width="1200" alt="IELTS PEEL Hacker banner animation" src="banner.gif" />
+<img width="1200" alt="IELTS PEEL Hacker banner animation" src="banner.gif?20260725-01" />
 
 # IELTS PEEL Hacker
 
