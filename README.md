@@ -2,57 +2,121 @@
 
 # IELTS PEEL Hacker
 
-> **产品是 Skill**  
-> 逻辑生成器 —— 雅思大作文 **Task 2 Body** / 口语 **Part 3**。  
-> 用锁定结构 `[P] → [E1] → [E2] → [L]` 执行因果论证，而不是堆砌连接词。
-
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](./LICENSE)
 
+<p align="center">
+  <a href="#english"><strong>🇬🇧 English</strong></a> ·
+  <a href="#中文"><strong>🇨🇳 中文</strong></a>
+</p>
+
 ---
 
-## 30 秒搞懂
+<a id="english"></a>
 
-| 你要做什么 | 打开什么 |
-|------------|----------|
-| **装到 Agent 里用（推荐）** | [`skill/SKILL.md`](./skill/SKILL.md) |
-| **贴到任意 LLM 的 System** | [`skill/references/SYSTEM_PROMPT.md`](./skill/references/SYSTEM_PROMPT.md) |
-| **本地自测 / 调试（可选）** | `client/` + `server/` playground |
+## English
+
+> **The product is the Skill** — a cold logic engine for IELTS Writing Task 2 body paragraphs and Speaking Part 3.  
+> Generates locked `[P] → [E1] → [E2] → [L]` causal arguments instead of piling up discourse glue.
+
+### 30-Second Overview
+
+| What you need | Where to go |
+|---------------|-------------|
+| **Install as an Agent Skill (recommended)** | [`skill/SKILL.md`](./skill/SKILL.md) |
+| **Paste as System Prompt into any LLM** | [`skill/references/SYSTEM_PROMPT.md`](./skill/references/SYSTEM_PROMPT.md) |
+| **Run the local BYOK playground (optional)** | `client/` + `server/` stack |
 
 ```
-                    ┌─────────────────────────┐
-                    │   IELTS PEEL Hacker      │
-                    │   = Skill / System Prompt │
-                    └───────────┬─────────────┘
-                                │
-           ┌────────────────────┼────────────────────┐
-           ▼                    ▼                    ▼
-    /peel 单点爆破      /matrix 横向秒杀      /wizard 母剧本
-           │                    │                    │
-           └────────────────────┴────────────────────┘
-                                │
-                    可选：本地 BYOK 网页壳（非产品）
+                  ┌─────────────────────────┐
+                  │   IELTS PEEL Hacker      │
+                  │   = Skill / System Prompt │
+                  └───────────┬─────────────┘
+                              │
+         ┌────────────────────┼────────────────────┐
+         ▼                    ▼                    ▼
+  /peel single-shot    /matrix cross-kill    /wizard mother script
+         │                    │                    │
+         └────────────────────┴────────────────────┘
+                              │
+                optional: BYOK web playground
 ```
 
+### Commands
+
+| Command | Input | Output |
+|---------|-------|--------|
+| `/peel <prompt>` | IELTS W2 / Part 3 question | 4 English lines `[P][E1][E2][L]` + 1 Chinese `底层逻辑` line |
+| `/matrix <phenomenon>` | Social phenomenon | Model A/B/C match + base PEEL + 3 sibling kills |
+| `/wizard [topic]` | Empty or topic keywords | First: life-detail questions. After answers: mother scripts |
+| `/score <peel text>` | User PEEL (labeled or 4 lines) | Cold quality checklist: layer boundaries, banned glue, E2 physicality |
+| `/bank <subcommand>` | Internal speaking warehouse | random / search / links / peel / stats |
+
+### Core Philosophy
+
+IELTS Writing Task 2 and Speaking Part 3 are **exercises in causal logic**, not vocabulary display. Examiners score one thing:
+
+> **Does each sentence causally follow from the previous one?**
+
+PEEL Hacker encodes every argument as four locked layers:
+
+| Layer | Altitude | Job |
+|-------|----------|-----|
+| **P** | Satellite | Abstract verdict — what kind of problem is this? |
+| **E1** | Drone | Causal mechanism — how does A lead to B? |
+| **E2** | Microscope | Physical entity strike — tangible evidence |
+| **L** | Return | One-sentence seal back to P, no new info |
+
+**Hard constraints (enforced by the skill):**
+- Exactly 4 labeled sentences `[P][E1][E2][L]`
+- No banned glue: `First of all`, `In conclusion`, `On the one hand`, etc.
+- 9 mother-topic routing: Education · Technology · Environment · Crime · Government · Media · Urbanization · Society · Health
+
+### Quick Install
+
+#### A) Copy the Skill package (Grok / Claude Code / Cursor)
+```bash
+git clone https://github.com/gooogleflfa13-a11y/ielts-peel-skill.git
+cd ielts-peel-skill
+
+# User-wide
+cp -R skill ~/.grok/skills/ielts-peel-skill
+# or
+cp -R skill ~/.agents/skills/ielts-peel-skill
+
+# Project-scoped
+mkdir -p .grok/skills && cp -R skill .grok/skills/ielts-peel-skill
+```
+
+Invoke: `/ielts-peel-skill` or natural language like "用 PEEL 写这道雅思大作文".
+
+#### B) Raw System Prompt (any LLM)
+Open [`skill/references/SYSTEM_PROMPT.md`](./skill/references/SYSTEM_PROMPT.md) and paste the full content into the System field.
+
+#### C) Local Playground (developers)
+See the [中文 section](#仓库结构) for the full tree, or run:
+```bash
+/usr/local/bin/npm run install:all
+/usr/local/bin/npm run dev
+```
+
+### Repository Map
+```
+ielts-peel-skill/
+├── skill/               # ★ Product (portable skill package)
+├── .grok/skills/        #   Project Skill mirror
+├── server/              #   Optional API + structured knowledge
+├── client/              #   Optional playground UI
+├── tests/               #   Integration + unit tests
+└── docs/                #   Architecture blueprint
+```
+
+See full details in the [中文 section](#中文) below.
+
 ---
 
-## 目录
+<a id="中文"></a>
 
-- [核心理念](#核心理念)
-- [安装 Skill（产品交付）](#安装-skill产品交付)
-- [指令与输出成果展示](#指令与输出成果展示)
-  - [`/peel`](#peel--单点逻辑爆破)
-  - [`/matrix`](#matrix--降维打穿器)
-  - [`/wizard`](#wizard--基准剧本生成器)
-  - [`/score`](#score--peel-质检)
-  - [`/bank`](#bank--内嵌题库底仓)
-- [思维方式指南](#思维方式指南)
-- [仓库结构](#仓库结构)
-- [可选：本地 Playground](#可选本地-playground)
-- [开发与同步](#开发与同步)
-- [安全](#安全)
-- [License](#license)
-
----
+## 中文
 
 ## 核心理念
 
