@@ -3,7 +3,7 @@ import { runMatrixSkill } from './skills/matrixSkill.js';
 import { runWizardSkill } from './skills/wizardSkill.js';
 import { runScoreSkill } from './skills/scoreSkill.js';
 import { runBankSkill } from './skills/bankSkill.js';
-import { getWeaknessReport, getRelevantFuel, recordPeelResult } from './memory/userMemory.js';
+import { createNullMemoryStore } from './memory/memoryStore.js';
 import { log } from './utils/logger.js';
 import { recordMetric } from './utils/metrics.js';
 import { handleLLMError, callLLM, streamLLM } from './utils/llmClient.js';
@@ -16,6 +16,12 @@ import {
   wrapAsTaskPayload,
 } from './utils/sanitize.js';
 import { MAX_INPUT_CHARS } from './utils/constants.js';
+import {
+  buildRepairInstruction,
+  createQualityError,
+  evaluatePeelOutput,
+  finalizeGeneratedOutput,
+} from './evaluation/outputQuality.js';
 
 /**
  * Central dispatcher for /peel /matrix /wizard /score /bank
@@ -29,7 +35,11 @@ export async function runCommand({
   model,
   userId = 'default',
   aiScore = false,
-}) {
+  memoryStore = createNullMemoryStore(),
+}, {
+  enablePrivateQuestionBank = false,
+  llmRuntime,
+} = {}) {
   const started = Date.now();
   const cmd = (command || 'peel').toLowerCase();
 
@@ -49,38 +59,34 @@ export async function runCommand({
           input: clean,
           history,
           apiKey,
-          baseUrl,
           model,
           userId,
-        });
+          memoryStore,
+        }, { llmRuntime });
         break;
       case 'matrix':
         result = await runMatrixSkill({
           input: clean,
           history,
           apiKey,
-          baseUrl,
           model,
           userId,
-        });
+          memoryStore,
+        }, { llmRuntime });
         break;
       case 'wizard':
         result = await runWizardSkill({
           input: clean,
           history,
           apiKey,
-          baseUrl,
           model,
           userId,
-        });
+          memoryStore,
+        }, { llmRuntime });
         break;
       case 'score':
         result = await runScoreSkill({
           input: clean,
-          apiKey,
-          baseUrl,
-          model,
-          aiScore,
         });
         break;
       case 'bank':
@@ -91,6 +97,7 @@ export async function runCommand({
           baseUrl,
           model,
           userId,
+          enablePrivateQuestionBank,
         });
         break;
       default:
@@ -101,7 +108,7 @@ export async function runCommand({
 
     const latency = Date.now() - started;
     const tokens = result.usage?.total_tokens || 0;
-    const passed = result.validation?.passed ?? true;
+    const passed = result.status !== 'quality_failed' && (result.validation?.passed ?? true);
 
     recordMetric({
       topicId: result.topic?.id,
@@ -119,10 +126,27 @@ export async function runCommand({
       latencyMs: latency,
     });
 
-    const weak = getWeaknessReport(userId);
+    if (result.status === 'quality_failed') {
+      return {
+        ok: false,
+        status: 'quality_failed',
+        code: 'QUALITY_FAILED',
+        message: result.message,
+        command: cmd,
+        content: null,
+        parsed: result.parsed,
+        validation: result.validation,
+        issues: result.issues,
+        retries: result.retries,
+        latencyMs: latency,
+      };
+    }
+
+    const weak = await memoryStore.getWeaknessReport({ userId });
 
     return {
       ok: true,
+      status: 'success',
       command: cmd,
       model,
       content: result.content,
@@ -131,7 +155,8 @@ export async function runCommand({
       topic: result.topic,
       validation: result.validation,
       entities: result.entities || [],
-      semantic: result.semantic || null,
+      feedback: result.feedback,
+      disclaimer: result.disclaimer,
       reductionModel: result.reductionModel || null,
       retries: result.retries || 0,
       weak: weak?.suggestion || null,
@@ -169,25 +194,33 @@ export async function runCommandStream({
   model,
   userId = 'default',
   aiScore = false,
+  memoryStore = createNullMemoryStore(),
+  signal,
   onChunk,
   onComplete,
   onError,
-}) {
+}, {
+  enablePrivateQuestionBank = false,
+  llmRuntime,
+} = {}) {
   const started = Date.now();
   const cmd = (command || 'peel').toLowerCase();
 
   try {
     if (cmd !== 'peel') {
-      const result = await runCommand({
-        command,
-        input,
-        history,
-        apiKey,
-        baseUrl,
-        model,
-        userId,
-        aiScore,
-      });
+      const result = await runCommand(
+        {
+          command,
+          input,
+          history,
+          apiKey,
+          model,
+          userId,
+          aiScore,
+          memoryStore,
+        },
+        { enablePrivateQuestionBank, llmRuntime }
+      );
       // optional single "chunk" of full body for UI parity
       if (result.content) onChunk?.(result.content);
       onComplete?.(result);
@@ -197,7 +230,11 @@ export async function runCommandStream({
     const { clean } = sanitizeUserInput(input, { maxLen: MAX_INPUT_CHARS });
     const { classification, knowledge: topicKnowledge } = retrieveTopic(clean);
 
-    const userFuel = getRelevantFuel(userId, classification?.topicId);
+    const memoryContext = { userId };
+    const userFuel = await memoryStore.getRelevantFuel(
+      memoryContext,
+      classification?.topicId
+    );
     const fuelHint =
       userFuel.length > 0
         ? `\n[USER E2 FUEL — prefer these personal entities]: ${userFuel
@@ -231,65 +268,54 @@ export async function runCommandStream({
     ];
 
     let fullContent = '';
-    let retries = 0;
 
+    const providerRuntime = { ...llmRuntime, signal };
     for await (const chunk of streamLLM({
       apiKey,
-      baseUrl,
       model,
       messages: baseMessages,
       temperature: 0.3,
       maxTokens: 2500,
-    })) {
+    }, providerRuntime)) {
       fullContent += chunk;
-      onChunk?.(chunk);
     }
 
-    let parsed = parsePeelOutput(fullContent);
-    let validation = validatePeels(parsed.peels);
+    const finalized = await finalizeGeneratedOutput({
+      content: fullContent,
+      usage: null,
+      evaluate: (candidate) => evaluatePeelOutput(candidate, { minPeels: 1, maxPeels: 1 }),
+      repair: ({ content: failedContent, issues }) =>
+        callLLM({
+          apiKey,
+          model,
+          system,
+          user: buildRepairInstruction(issues),
+          history: [
+            ...history,
+            { role: 'user', content: wrappedUser },
+            { role: 'assistant', content: failedContent },
+          ],
+        }, providerRuntime),
+    });
 
-    if (
-      !validation.passed &&
-      validation.allWarnings.length > 0 &&
-      parsed.peels.length > 0
-    ) {
-      retries = 1;
-      const failedAttempt = fullContent;
-      const correctionHint = `Your previous output had these quality issues:\n${validation.allWarnings
-        .map((w, i) => `${i + 1}. ${w}`)
-        .join(
-          '\n'
-        )}\n\nPLEASE REGENERATE. Fix all issues. Keep exact [P][E1][E2][L] format.`;
-
-      // Non-stream correction for reliability; emit as one chunk
-      const corrected = await callLLM({
-        apiKey,
-        baseUrl,
-        model,
-        system,
-        user: correctionHint,
-        history: [
-          ...history,
-          { role: 'user', content: wrappedUser },
-          { role: 'assistant', content: failedAttempt },
-        ],
-      });
-      fullContent = corrected.content || '';
-      onChunk?.('\n\n' + fullContent);
-      parsed = parsePeelOutput(fullContent);
-      validation = validatePeels(parsed.peels);
+    if (!finalized.ok) {
+      onError?.(createQualityError(finalized));
+      return;
     }
 
-    recordPeelResult(userId, {
+    const { content, parsed, validation, retries } = finalized;
+
+    await memoryStore.recordResult(memoryContext, {
       topicId: classification?.topicId,
       validation,
       command: 'peel',
+      source: 'agent',
     });
 
     const entities = (parsed.peels || []).flatMap((p) =>
       detectEntities([p.P, p.E1, p.E2, p.L].join(' '))
     );
-    const weak = getWeaknessReport(userId);
+    const weak = await memoryStore.getWeaknessReport(memoryContext);
     const latency = Date.now() - started;
 
     recordMetric({
@@ -300,11 +326,13 @@ export async function runCommandStream({
       command: cmd,
     });
 
+    onChunk?.(content);
     onComplete?.({
       ok: true,
+      status: 'success',
       command: cmd,
       model,
-      content: fullContent,
+      content,
       parsed,
       usage: null,
       topic: {
@@ -322,6 +350,7 @@ export async function runCommandStream({
       streamNote: 'Token streaming is peel-only; other commands complete in one shot.',
     });
   } catch (err) {
+    if (signal?.aborted || err?.name === 'AbortError') return;
     log('ERROR', `${cmd}.failed`, {
       message: err?.message,
       status: err?.status,

@@ -12,6 +12,7 @@ describe('peelParser', () => {
 底层逻辑：教育 · 社会节点 · 缺失模型 · seminar rooms`;
 
     const parsed = parsePeelOutput(text);
+    expect(parsed.ok).toBe(true);
     expect(parsed.peels).toHaveLength(1);
     expect(parsed.peels[0].P).toMatch(/Abstract/);
     expect(parsed.peels[0].E2).toMatch(/seminar/);
@@ -28,6 +29,7 @@ describe('peelParser', () => {
 [E2] Seven hospital.
 [L] Eight.`;
     const parsed = parsePeelOutput(text);
+    expect(parsed.ok).toBe(true);
     expect(parsed.peels.length).toBe(2);
   });
 

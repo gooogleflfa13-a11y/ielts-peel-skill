@@ -1,53 +1,32 @@
 import { parsePeelOutput, parseLooseLines } from '../parsing/peelParser.js';
-import { validatePeels, detectEntities } from '../evaluation/validator.js';
-import { aiSemanticScore } from '../evaluation/aiScorer.js';
-import { log } from '../utils/logger.js';
+import { validatePeels } from '../evaluation/validator.js';
+import { buildStructuralFeedback } from '../evaluation/structuralFeedback.js';
 
 /**
- * Score user-pasted PEEL — programmatic by default; optional AI semantic layer.
+ * Review user-pasted PEEL structure deterministically.
  */
-export async function runScoreSkill({
-  input,
-  apiKey,
-  baseUrl,
-  model,
-  aiScore = false,
-}) {
+export async function runScoreSkill({ input }) {
   let parsed = parsePeelOutput(input);
   let peels = parsed.peels;
 
   if (peels.length === 0) {
-    const loose = parseLooseLines(input);
+    const looseLineCount = String(input || '')
+      .split(/\n/)
+      .filter((line) => line.trim()).length;
+    const loose = looseLineCount === 4 ? parseLooseLines(input) : null;
     if (loose) {
       peels = [loose];
-      parsed = { peels, meta: null, model: null, raw: input };
+      parsed = { ok: true, peels, meta: null, model: null, raw: input };
     }
   }
 
   const validation = validatePeels(peels);
-  const entities = peels.flatMap((p) =>
-    detectEntities([p.P, p.E1, p.E2, p.L].join(' '))
-  );
-
-  let semantic = null;
-  let semanticError = null;
-  if (aiScore && apiKey && peels[0]) {
-    try {
-      semantic = await aiSemanticScore(peels[0], { apiKey, baseUrl, model });
-    } catch (err) {
-      semanticError = err?.message || 'AI semantic score failed';
-      log('WARN', 'ai.score.failed', { message: semanticError });
-      semantic = null;
-    }
-  }
+  const review = buildStructuralFeedback(parsed, validation);
 
   return {
     content: input,
     parsed,
-    validation,
-    entities,
-    semantic,
-    semanticError,
+    ...review,
     topic: null,
     retries: 0,
   };

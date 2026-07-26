@@ -52,12 +52,12 @@ IELTS rewards logic, not vocabulary. PEEL Hacker is a cold forensic engine that 
 | `/peel <prompt>` | IELTS W2 / Part 3 question | 4 English lines `[P][E1][E2][L]` + 1 Chinese `底层逻辑` line |
 | `/matrix <phenomenon>` | Social phenomenon | Model A/B/C match + base PEEL + 3 sibling kills |
 | `/wizard [topic]` | Empty or topic keywords | First: life-detail questions. After answers: mother scripts |
-| `/score <peel text>` | User PEEL (labeled or 4 lines) | Cold quality checklist: layer boundaries, banned glue, E2 physicality |
-| `/bank <subcommand>` | Internal speaking warehouse | random / search / links / peel / stats |
+| `/score <peel text>` | User PEEL (labeled or 4 lines) | Deterministic PEEL Structure Review: labels, boundaries, E2 concreteness, closure, banned glue |
+| `/bank <subcommand>` | Internal speaking warehouse | Local-only; requires explicit `ENABLE_PRIVATE_QUESTION_BANK=true` |
 
 ### Core Philosophy
 
-IELTS Writing Task 2 and Speaking Part 3 are **exercises in causal logic**, not vocabulary display. Examiners score one thing:
+IELTS Writing Task 2 and Speaking Part 3 require a clear causal argument, not vocabulary display. PEEL Hacker focuses on one development question:
 
 > **Does each sentence causally follow from the previous one?**
 
@@ -126,7 +126,7 @@ See full details in the [中文 section](#中文) below.
 
 雅思大作文和口语 Part 3 的本质是 **用英语执行逻辑论证**，不是背 GRE 词、堆 `Furthermore / Moreover / In conclusion`。
 
-考官真正在看的只有一件事：
+这套脚手架重点检查一件事：
 
 > **句子之间有没有真正的因果链条？**
 
@@ -203,8 +203,8 @@ mkdir -p .grok/skills && cp -R skill .grok/skills/ielts-peel-skill
 | `/peel` | 1 段 4 句英文 PEEL + 1 行中文底层逻辑 | 大作文 body / 口语 Part 3 单题 |
 | `/matrix` | 1 个模型 + 基准 PEEL + 3 道同类题秒杀 | 一类题批量准备 |
 | `/wizard` | 先追问细节 → 3–4 套「你的」母剧本 + 路由表 | 口语地基 / 个人素材库 |
-| `/score` | 质检报告（缺层 / 禁用词 / E2 是否物理） | 批改自己写的 PEEL |
-| `/bank` | 抽题 / 横纵图 / 隐式取题再 PEEL | 口语当季题仓训练 |
+| `/score` | 确定性结构反馈（标签 / 分层 / E2 实体 / 回扣 / 禁用词） | 修改自己写的 PEEL，不提供官方评分 |
+| `/bank` | 本地显式启用后抽题 / 横纵图 / PEEL | 私有本地题仓训练，公开模式禁用 |
 
 ---
 
@@ -364,7 +364,7 @@ Model C: 过去 vs 现在 — 城市化 + 数字化的双重挤压
 
 ---
 
-### `/score` — PEEL 质检
+### `/score` — PEEL 结构反馈
 
 **你输入**
 
@@ -381,24 +381,25 @@ build more schools and also improve the internet.
 **你得到（示意）**
 
 ```text
-⚠ QUALITY GATE
-structure: 1.0 | layers: 0.25 | physical: 0.0
+PEEL STRUCTURE REVIEW: REVISE
+Labels: PASS · Layer boundaries: FAIL · E2 concreteness: FAIL
+Link closure: FAIL · Banned glue: FAIL
 
-• Banned discourse glue detected: /\bin conclusion\b/i
-• P contains "for example"
-• P has excessive causal chains — keep abstract
-• E1 contains concrete entities — move to E2   (若适用)
-• ⚠️ E2 lacks ANY physical entity — add person/place/object/action
-• L is too long — should be one sentence max
+Evidence: E2 lacks a concrete physical entity.
+Revise: add a specific person, place, object, or observable action to E2.
+
+PEEL structure feedback only. Not an official IELTS assessment or band estimate.
 ```
 
-**对比：合格样例会被标成** `✓ QUALITY PASS`（无禁用连接词、E2 有 seminar room / whiteboard 等实体）。
+**对比：未检测到结构问题的样例会显示** `PEEL STRUCTURE REVIEW: CLEAR`。这不代表官方雅思评估结果。
 
 Playground 下 `/score` **可不填 API Key**（程序化质检）。
 
 ---
 
-### `/bank` — 内嵌题库底仓
+### `/bank` — 本地私有题库能力
+
+该能力默认关闭，公开模式始终不可用。本地运行时仅在明确设置 `ENABLE_PRIVATE_QUESTION_BANK=true` 后开放。
 
 口语题已嵌入数据平面（`server/knowledge/question-bank/`、`skill/references/question-bank/`），  
 **不是**用户下载的 PDF，而是抽题 / 关联 / 作答时的隐藏材料仓。
@@ -514,7 +515,7 @@ ielts-peel-skill/
 ├── client/                           # 可选 playground UI
 ├── server/                           # 可选 API + 结构化知识
 ├── tests/                            # 质检 / 检索 / 解析单测
-├── docs/EVOLUTION_BLUEPRINT.md       # 架构进化蓝图
+├── docs/EVOLUTION_BLUEPRINT.md       # Historical architecture blueprint (obsolete product claims)
 ├── scripts/
 │   ├── build-prompt.mjs
 │   └── sync-skill.mjs
@@ -541,10 +542,10 @@ cd ielts-peel-skill
 
 Playground 能力（进化后）：
 
-- BYOK：自备 OpenAI 兼容 Key（DeepSeek / 硅基流动 / Ollama…）  
+- Provider 地址由服务端配置；浏览器不提交或保存 provider URL
 - 按需注入母题知识（不再每次灌满 8k tokens）  
 - 输出质检门禁 + 自动重试  
-- `/score` 程序化评分  
+- `/score` 确定性 PEEL 结构反馈（非官方雅思评估或分数预测）
 
 若本机 `npm` 异常，请用 `/usr/local/bin/npm`，或：
 
@@ -569,7 +570,7 @@ npm test
 
 CI：`.github/workflows/eval.yml` 在 push / PR 时跑单元与集成测试。
 
-架构细节见 [`docs/EVOLUTION_BLUEPRINT.md`](./docs/EVOLUTION_BLUEPRINT.md)。
+Historical architecture blueprint（非当前产品契约）：[`docs/EVOLUTION_BLUEPRINT.md`](./docs/EVOLUTION_BLUEPRINT.md)。
 
 ---
 
@@ -578,6 +579,7 @@ CI：`.github/workflows/eval.yml` 在 push / PR 时跑单元与集成测试。
 | 项 | 说明 |
 |----|------|
 | Skill | 无 API Key、无个人经历剧本 |
+| Public mode | 默认无状态；关闭本地记忆与私有题库；provider 地址仅由服务端配置 |
 | Playground | Key 仅浏览器 `sessionStorage`，经本机转发，不落盘 |
 | 仓库 | 请勿提交 `.env`、版权 PDF、私人对话 |
 | 公开前 | 确认未包含训练材料 PDF / 对话记录 |

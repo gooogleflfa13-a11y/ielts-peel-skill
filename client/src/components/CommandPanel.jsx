@@ -24,8 +24,8 @@ const COMMANDS = [
   {
     id: 'score',
     label: '/score',
-    title: 'PEEL 评分',
-    hint: '粘贴你的 PEEL（带 [P][E1][E2][L] 或四行）→ 程序化质检，无需调 LLM（可选 AI 语义分）',
+    title: 'PEEL 结构反馈',
+    hint: '粘贴你的 PEEL（带 [P][E1][E2][L] 或四行）→ 确定性结构检查，不是官方雅思评分',
     placeholder:
       '[P] ...\n[E1] ...\n[E2] ...\n[L] ...',
   },
@@ -60,15 +60,17 @@ export default function CommandPanel({
   onClearWizard,
   wizardTurns,
   needsApiKey = true,
+  capabilities = ['peel', 'matrix', 'wizard', 'score'],
 }) {
-  const meta = COMMANDS.find((c) => c.id === command) || COMMANDS[0];
+  const availableCommands = COMMANDS.filter((c) => capabilities.includes(c.id));
+  const meta = availableCommands.find((c) => c.id === command) || availableCommands[0] || COMMANDS[0];
 
   return (
     <section className="panel flex flex-col p-4 sm:p-5">
       <h2 className="label mb-3">Interactive Commands</h2>
 
       <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-        {COMMANDS.map((c) => {
+        {availableCommands.map((c) => {
           const active = command === c.id;
           return (
             <button
@@ -96,7 +98,7 @@ export default function CommandPanel({
 
       <p className="mt-3 text-xs leading-relaxed text-slate-400">{meta.hint}</p>
       {!needsApiKey && command === 'score' && (
-        <p className="mt-1 text-[11px] text-acid-400/80">/score 默认不调用 LLM，无需 API Key</p>
+        <p className="mt-1 text-[11px] text-acid-400/80">PEEL Structure Review 无需 API Key</p>
       )}
 
       {command === 'wizard' && wizardTurns > 0 && (
@@ -132,7 +134,7 @@ export default function CommandPanel({
           ) : (
             <>
               <span className="font-mono">⚡</span>{' '}
-              {command === 'score' ? 'Score' : 'Generate'}
+              {command === 'score' ? 'Review' : 'Generate'}
             </>
           )}
         </button>

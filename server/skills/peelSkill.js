@@ -1,17 +1,18 @@
 import { buildPeelPrompt } from '../prompts/peelPrompt.js';
 import { callLLM } from '../utils/llmClient.js';
-import { parsePeelOutput } from '../parsing/peelParser.js';
-import { validatePeels, detectEntities } from '../evaluation/validator.js';
+import { detectEntities } from '../evaluation/validator.js';
 import { retrieveTopic } from '../knowledge/topicRetriever.js';
-import {
-  getRelevantFuel,
-  recordPeelResult,
-} from '../memory/userMemory.js';
+import { createNullMemoryStore } from '../memory/memoryStore.js';
 import {
   sanitizeUserInput,
   wrapAsTaskPayload,
 } from '../utils/sanitize.js';
 import { MAX_INPUT_CHARS } from '../utils/constants.js';
+import {
+  buildRepairInstruction,
+  evaluatePeelOutput,
+  finalizeGeneratedOutput,
+} from '../evaluation/outputQuality.js';
 
 export async function runPeelSkill({
   input,
@@ -20,13 +21,18 @@ export async function runPeelSkill({
   baseUrl,
   model,
   userId = 'default',
-}) {
+  memoryStore = createNullMemoryStore(),
+}, { llmRuntime } = {}) {
   const { clean: safeInput } = sanitizeUserInput(input, {
     maxLen: MAX_INPUT_CHARS,
   });
   const { classification, knowledge: topicKnowledge } = retrieveTopic(safeInput);
 
-  const userFuel = getRelevantFuel(userId, classification?.topicId);
+  const memoryContext = { userId };
+  const userFuel = await memoryStore.getRelevantFuel(
+    memoryContext,
+    classification?.topicId
+  );
   const fuelHint =
     userFuel.length > 0
       ? `\n[USER E2 FUEL — prefer these personal entities]: ${userFuel
@@ -47,84 +53,60 @@ export async function runPeelSkill({
 
   const { content, usage } = await callLLM({
     apiKey,
-    baseUrl,
     model,
     system,
     user: wrappedUser,
     history,
+  }, llmRuntime);
+
+  const finalized = await finalizeGeneratedOutput({
+    content,
+    usage,
+    evaluate: (candidate) => evaluatePeelOutput(candidate, { minPeels: 1, maxPeels: 1 }),
+    repair: ({ content: failedContent, issues }) =>
+      callLLM({
+        apiKey,
+        model,
+        system,
+        user: buildRepairInstruction(issues),
+        history: [
+          ...history,
+          { role: 'user', content: wrappedUser },
+          { role: 'assistant', content: failedContent },
+        ],
+      }, llmRuntime),
   });
 
-  let finalContent = content;
-  let finalParsed = parsePeelOutput(content);
-  let finalValidation = validatePeels(finalParsed.peels);
-  let retries = 0;
-  let totalUsage = usage;
-
-  if (
-    !finalValidation.passed &&
-    finalValidation.allWarnings.length > 0 &&
-    finalParsed.peels.length > 0
-  ) {
-    retries = 1;
-    const correctionHint = `Your previous output had these quality issues:\n${finalValidation.allWarnings
-      .map((w, i) => `${i + 1}. ${w}`)
-      .join(
-        '\n'
-      )}\n\nPLEASE REGENERATE. Fix all issues. Keep exact [P][E1][E2][L] format.`;
-
-    // Inject failed attempt into history so the model sees its own prior output
-    const corrected = await callLLM({
-      apiKey,
-      baseUrl,
-      model,
-      system,
-      user: correctionHint,
-      history: [
-        ...history,
-        { role: 'user', content: wrappedUser },
-        { role: 'assistant', content: finalContent },
-      ],
-    });
-
-    finalContent = corrected.content;
-    finalParsed = parsePeelOutput(finalContent);
-    finalValidation = validatePeels(finalParsed.peels);
-    if (corrected.usage && totalUsage) {
-      totalUsage = {
-        prompt_tokens:
-          (totalUsage.prompt_tokens || 0) + (corrected.usage.prompt_tokens || 0),
-        completion_tokens:
-          (totalUsage.completion_tokens || 0) +
-          (corrected.usage.completion_tokens || 0),
-        total_tokens:
-          (totalUsage.total_tokens || 0) + (corrected.usage.total_tokens || 0),
-      };
-    } else {
-      totalUsage = corrected.usage || totalUsage;
-    }
+  if (!finalized.ok) {
+    return {
+      ...finalized,
+      topic: {
+        id: classification.topicId,
+        score: classification.score,
+        matchedKeywords: classification.matchedKeywords,
+      },
+      entities: [],
+    };
   }
 
-  recordPeelResult(userId, {
+  await memoryStore.recordResult(memoryContext, {
     topicId: classification.topicId,
-    validation: finalValidation,
+    validation: finalized.validation,
     command: 'peel',
+    source: 'agent',
   });
 
-  const entities = (finalParsed.peels || []).flatMap((p) =>
+  const entities = (finalized.parsed.peels || []).flatMap((p) =>
     detectEntities([p.P, p.E1, p.E2, p.L].join(' '))
   );
 
   return {
-    content: finalContent,
-    parsed: finalParsed,
-    usage: totalUsage,
+    ...finalized,
     topic: {
       id: classification.topicId,
       score: classification.score,
       matchedKeywords: classification.matchedKeywords,
     },
-    validation: finalValidation,
     entities,
-    retries,
   };
 }

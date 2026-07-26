@@ -144,7 +144,15 @@ export async function runBankSkill({
   baseUrl,
   model,
   userId = 'default',
+  enablePrivateQuestionBank = false,
 }) {
+  if (!enablePrivateQuestionBank) {
+    throw Object.assign(new Error('The private question bank is disabled.'), {
+      code: 'FEATURE_DISABLED',
+      status: 403,
+    });
+  }
+
   const { action, args } = parseBankCommand(input);
   log('INFO', 'bank.action', { action, args });
 

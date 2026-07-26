@@ -2,53 +2,154 @@
  * Structural PEEL parser — scans [P]/[E1]/[E2]/[L] markers in document order.
  */
 export function parsePeelOutput(text) {
-  if (!text) return { peels: [], meta: null, model: null, raw: '' };
-
-  const peels = [];
-  const markerRe = /\[(P|E1|E2|L)\]\s*([\s\S]*?)(?=\s*\[(P|E1|E2|L)\]|$)/gi;
-
-  let m;
-  let current = null;
-  while ((m = markerRe.exec(text)) !== null) {
-    const label = m[1];
-    const body = m[2]
-      .replace(/^\s*\n/, '')
-      .replace(/\s+$/, '')
-      .replace(/\n\s*---[\s\S]*$/, '')
-      .trim();
-
-    if (label === 'P') {
-      if (current) peels.push(current);
-      current = { P: body, E1: '', E2: '', L: '' };
-    } else if (current) {
-      current[label] = body.split('\n')[0]?.trim() === body
-        ? body
-        : body.replace(/\n+---[\s\S]*$/, '').trim();
-    }
-  }
-  if (current) peels.push(current);
-
-  // Clean L lines that swallowed trailing meta
-  for (const peel of peels) {
-    if (peel.L) {
-      peel.L = peel.L
-        .split(/\n/)
-        .filter((line) => !/底层逻辑|命中模型|横向秒杀/.test(line))
-        .join(' ')
-        .trim();
-    }
-  }
-
-  const metaMatch = text.match(/底层逻辑[：:]\s*(.+)/);
-  const modelMatch = text.match(/Model\s*([ABC])\s*[:：]\s*(.+)/i);
-
-  return {
-    peels,
+  const raw = typeof text === 'string' ? text : '';
+  const metaMatch = raw.match(/底层逻辑[：:]\s*(.+)/);
+  const modelMatch = raw.match(/Model\s*([ABC])\s*[:：]\s*(.+)/i);
+  const metadata = {
     meta: metaMatch ? metaMatch[1].trim() : null,
     model: modelMatch
       ? { id: modelMatch[1].toUpperCase(), label: modelMatch[2].trim() }
       : null,
-    raw: text,
+    raw,
+  };
+
+  const fail = (issues) => ({
+    ok: false,
+    code: 'INVALID_PEEL_STRUCTURE',
+    issues,
+    peels: [],
+    ...metadata,
+  });
+
+  if (!raw.trim()) {
+    return fail([
+      {
+        code: 'NO_PEEL',
+        evidence: '',
+        action: 'Provide one complete [P][E1][E2][L] unit.',
+      },
+    ]);
+  }
+
+  const allMarkerRe = /\[([^\]\r\n]*)\]/g;
+  const markers = [];
+  let match;
+  while ((match = allMarkerRe.exec(raw)) !== null) {
+    markers.push({
+      label: match[1].toUpperCase(),
+      rawLabel: match[1],
+      start: match.index,
+      bodyStart: allMarkerRe.lastIndex,
+    });
+  }
+
+  const allowed = new Set(['P', 'E1', 'E2', 'L']);
+  const unknown = markers.filter((marker) => !allowed.has(marker.label));
+  if (unknown.length) {
+    return fail(
+      unknown.map((marker) => ({
+        code: 'UNKNOWN_LABEL',
+        evidence: `[${marker.rawLabel}]`,
+        action: 'Remove labels other than [P], [E1], [E2], and [L].',
+      }))
+    );
+  }
+
+  if (!markers.length) {
+    return fail([
+      {
+        code: 'NO_PEEL',
+        evidence: raw.slice(0, 120),
+        action: 'Provide one complete [P][E1][E2][L] unit.',
+      },
+    ]);
+  }
+
+  const labels = markers.map((marker) => marker.label);
+  const issues = [];
+  const unitCount = labels.filter((label) => label === 'P').length;
+  for (const label of allowed) {
+    const count = labels.filter((candidate) => candidate === label).length;
+    if (count > unitCount) {
+      issues.push({
+        code: 'DUPLICATE_LABEL',
+        layer: label,
+        evidence: `${count} [${label}] labels for ${unitCount} PEEL unit(s)`,
+        action: `Use [${label}] exactly once per PEEL unit.`,
+      });
+    } else if (count < unitCount) {
+      issues.push({
+        code: 'MISSING_LABEL',
+        layer: label,
+        evidence: `${count} [${label}] labels for ${unitCount} PEEL unit(s)`,
+        action: `Add one [${label}] to every PEEL unit.`,
+      });
+    }
+  }
+
+  const expected = ['P', 'E1', 'E2', 'L'];
+  labels.forEach((label, index) => {
+    if (label !== expected[index % expected.length]) {
+      issues.push({
+        code: 'LABEL_ORDER',
+        layer: label,
+        evidence: `[${label}] at marker ${index + 1}`,
+        action: 'Use labels only in repeated [P][E1][E2][L] order.',
+      });
+    }
+  });
+  if (labels.length % expected.length !== 0) {
+    issues.push({
+      code: 'MISSING_LABEL',
+      evidence: `Incomplete marker sequence: ${labels.map((label) => `[${label}]`).join(' ')}`,
+      action: 'Complete every PEEL unit with [P][E1][E2][L].',
+    });
+  }
+  if (issues.length) return fail(issues);
+
+  const trimMetadata = (body) => {
+    const lines = body.replace(/^\s*\n?/, '').split(/\n/);
+    const boundary = lines.findIndex((line) =>
+      /^\s*(?:---|\||#{1,6}\s|底层逻辑[：:]|Model\s*[ABC]\s*[:：]|逻辑同构|横向秒杀)/i.test(
+        line
+      )
+    );
+    return lines
+      .slice(0, boundary === -1 ? lines.length : boundary)
+      .join(' ')
+      .trim();
+  };
+
+  const peels = [];
+  for (let index = 0; index < markers.length; index += expected.length) {
+    const peel = {};
+    for (let offset = 0; offset < expected.length; offset++) {
+      const marker = markers[index + offset];
+      const next = markers[index + offset + 1];
+      peel[marker.label] = trimMetadata(
+        raw.slice(marker.bodyStart, next?.start ?? raw.length)
+      );
+    }
+    const emptyLayers = expected.filter((label) => !peel[label]);
+    if (emptyLayers.length) {
+      return fail(
+        emptyLayers.map((label) => ({
+          code: 'EMPTY_LAYER',
+          layer: label,
+          evidence: `[${label}] has no content`,
+          action: `Write one sentence after [${label}].`,
+        }))
+      );
+    }
+    peels.push(peel);
+  }
+
+  return {
+    ok: true,
+    peels,
+    issues: [],
+    code: null,
+    ...metadata,
   };
 }
 

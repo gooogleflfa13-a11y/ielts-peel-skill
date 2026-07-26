@@ -8,15 +8,19 @@ const STORAGE_KEY = 'peel-hacker-settings';
 
 const DEFAULT_SETTINGS = {
   apiKey: '',
-  baseUrl: 'https://api.openai.com/v1',
   model: 'gpt-4o-mini',
 };
+const DEFAULT_CAPABILITIES = ['peel', 'matrix', 'wizard', 'score'];
 
 function loadSettings() {
   try {
     const raw = sessionStorage.getItem(STORAGE_KEY);
     if (!raw) return DEFAULT_SETTINGS;
-    return { ...DEFAULT_SETTINGS, ...JSON.parse(raw) };
+    const parsed = JSON.parse(raw);
+    return {
+      apiKey: typeof parsed.apiKey === 'string' ? parsed.apiKey : '',
+      model: typeof parsed.model === 'string' ? parsed.model : DEFAULT_SETTINGS.model,
+    };
   } catch {
     return DEFAULT_SETTINGS;
   }
@@ -26,7 +30,7 @@ function peelToText(peel) {
   return `[P] ${peel.P}\n[E1] ${peel.E1}\n[E2] ${peel.E2}\n[L] ${peel.L}`;
 }
 
-export default function App() {
+export default function App({ capabilities = DEFAULT_CAPABILITIES }) {
   const [settings, setSettings] = useState(loadSettings);
   const [command, setCommand] = useState('peel');
   const [input, setInput] = useState('');
@@ -41,7 +45,6 @@ export default function App() {
       STORAGE_KEY,
       JSON.stringify({
         apiKey: settings.apiKey,
-        baseUrl: settings.baseUrl,
         model: settings.model,
       })
     );
@@ -79,7 +82,6 @@ export default function App() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           apiKey: settings.apiKey.trim() || undefined,
-          baseUrl: settings.baseUrl.trim() || DEFAULT_SETTINGS.baseUrl,
           model: settings.model.trim() || DEFAULT_SETTINGS.model,
           command,
           input: input.trim(),
@@ -172,6 +174,7 @@ export default function App() {
             onClearWizard={handleClearWizard}
             wizardTurns={history.filter((m) => m.role === 'user').length}
             needsApiKey={command !== 'score'}
+            capabilities={capabilities}
           />
           <ResultPanel
             result={result}

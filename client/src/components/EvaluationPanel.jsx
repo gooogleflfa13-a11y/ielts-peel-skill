@@ -1,7 +1,21 @@
-export default function EvaluationPanel({ validation, weak, topic, retries }) {
-  if (!validation) return null;
+const CHECK_LABELS = {
+  labels: 'Labels',
+  layerBoundaries: 'Layer boundaries',
+  e2Concreteness: 'E2 concreteness',
+  linkClosure: 'Link closure',
+  bannedGlue: 'Banned glue',
+};
 
-  const { summary, allWarnings = [], passed } = validation;
+export default function EvaluationPanel({ feedback, validation, weak, topic, retries }) {
+  if (!feedback && !validation) return null;
+
+  const structuralReview = Boolean(feedback);
+  const passed = structuralReview
+    ? feedback.status === 'no_issues_detected'
+    : validation.passed;
+  const issues = structuralReview
+    ? feedback.issues || []
+    : (validation.allWarnings || []).map((warning) => ({ evidence: warning }));
 
   return (
     <div
@@ -17,15 +31,10 @@ export default function EvaluationPanel({ validation, weak, topic, retries }) {
             passed ? 'text-acid-400' : 'text-amber-400'
           }`}
         >
-          {passed ? '✓ QUALITY PASS' : '⚠ QUALITY GATE'}
+          {structuralReview
+            ? passed ? 'PEEL STRUCTURE REVIEW: CLEAR' : 'PEEL STRUCTURE REVIEW: REVISE'
+            : passed ? 'QUALITY PASS' : 'QUALITY GATE'}
         </span>
-        {summary && (
-          <span className="text-[11px] text-slate-500">
-            structure: {(summary.structure ?? 0).toFixed(1)} | layers:{' '}
-            {(summary.layers ?? 0).toFixed(1)} | physical:{' '}
-            {(summary.physical ?? 0).toFixed(1)}
-          </span>
-        )}
         {topic?.id && (
           <span className="rounded border border-white/10 px-1.5 py-0.5 font-mono text-[10px] text-frost-400">
             topic:{topic.id}
@@ -37,11 +46,24 @@ export default function EvaluationPanel({ validation, weak, topic, retries }) {
           </span>
         )}
       </div>
-      {allWarnings.length > 0 && (
+      {structuralReview && (
+        <dl className="mb-2 grid grid-cols-2 gap-1 sm:grid-cols-3">
+          {Object.entries(feedback.checks || {}).map(([name, status]) => (
+            <div key={name} className="flex items-center gap-1.5 text-[11px]">
+              <dt className="text-slate-400">{CHECK_LABELS[name] || name}</dt>
+              <dd className={status === 'pass' ? 'text-acid-400' : 'text-amber-400'}>
+                {status.toUpperCase()}
+              </dd>
+            </div>
+          ))}
+        </dl>
+      )}
+      {issues.length > 0 && (
         <ul className="space-y-1">
-          {allWarnings.map((w, i) => (
+          {issues.map((issue, i) => (
             <li key={i} className="text-[11px] leading-relaxed text-amber-300/90">
-              • {w}
+              <span>{issue.layer ? `${issue.layer}: ` : ''}{issue.evidence}</span>
+              {issue.action && <span className="block text-slate-400">Revise: {issue.action}</span>}
             </li>
           ))}
         </ul>

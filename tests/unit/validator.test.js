@@ -7,7 +7,7 @@ describe('PEEL Validator', () => {
       P: 'The absence of physical schooling breeds deficits in social competency.',
       E1: 'This means young people miss the daily peer-to-peer negotiations that teach conflict resolution and empathy.',
       E2: 'Take university seminar rooms: students who study entirely online never build the impromptu study groups at whiteboards that become lifelong professional networks.',
-      L: 'Thus, physical attendance plays an irreplaceable role in holistic education.',
+      L: 'Thus, physical schooling plays an irreplaceable role in holistic education.',
     };
     const result = validatePeel(peel);
     expect(result.warnings.filter((w) => w.includes('E2 lacks'))).toHaveLength(0);
@@ -46,5 +46,116 @@ describe('PEEL Validator', () => {
     };
     const result = validatePeel(peel);
     expect(result.warnings.some((w) => w.includes('Banned'))).toBe(true);
+  });
+
+  it('requires exactly one sentence in every layer', () => {
+    const result = validatePeel({
+      P: 'Physical schooling develops social competence.',
+      E1: 'Daily peer negotiation teaches empathy.',
+      E2: 'Students form study groups around classroom whiteboards.',
+      L: 'Thus, classroom attendance supports holistic education. It also saves money.',
+    });
+
+    expect(result.passed).toBe(false);
+    expect(result.checks.layerBoundaries).toBe('fail');
+    expect(result.issues).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          layer: 'L',
+          code: 'SENTENCE_COUNT',
+          evidence: expect.any(String),
+          action: expect.any(String),
+        }),
+      ])
+    );
+  });
+
+  it('rejects a causal connector in P', () => {
+    const result = validatePeel({
+      P: 'Physical schooling matters because students need social competence.',
+      E1: 'Daily peer negotiation teaches empathy.',
+      E2: 'Students form study groups around classroom whiteboards.',
+      L: 'Thus, classroom attendance supports holistic education.',
+    });
+
+    expect(result.passed).toBe(false);
+    expect(result.checks.layerBoundaries).toBe('fail');
+    expect(result.issues).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ layer: 'P', code: 'P_CAUSAL_CHAIN' }),
+      ])
+    );
+  });
+
+  it('reports weak E2 as a named concreteness issue', () => {
+    const result = validatePeel({
+      P: 'Physical schooling develops social competence.',
+      E1: 'Daily interaction reinforces social learning.',
+      E2: 'This general tendency produces broadly positive outcomes.',
+      L: 'Thus, classroom attendance supports holistic education.',
+    });
+
+    expect(result.passed).toBe(false);
+    expect(result.checks.e2Concreteness).toBe('fail');
+    expect(result.issues).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ layer: 'E2', code: 'E2_NOT_CONCRETE' }),
+      ])
+    );
+  });
+
+  it('fails closed with named issues when a layer is missing', () => {
+    const result = validatePeel({
+      P: 'Physical schooling develops social competence.',
+      E1: 'Daily peer negotiation teaches empathy.',
+      E2: '',
+      L: 'Thus, classroom attendance supports holistic education.',
+    });
+
+    expect(result.passed).toBe(false);
+    expect(result.checks.labels).toBe('fail');
+    expect(result.issues).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ layer: 'E2', code: 'MISSING_LAYER' }),
+      ])
+    );
+  });
+
+  it('rejects a sentence fragment without terminal punctuation', () => {
+    const result = validatePeel({
+      P: 'Physical schooling develops social competence.',
+      E1: 'Daily peer negotiation teaches empathy.',
+      E2: 'Students form study groups around classroom whiteboards.',
+      L: 'Thus, physical schooling supports holistic education',
+    });
+
+    expect(result.passed).toBe(false);
+    expect(result.checks.layerBoundaries).toBe('fail');
+    expect(result.checks.linkClosure).toBe('fail');
+    expect(result.issues).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          layer: 'L',
+          code: 'TERMINAL_PUNCTUATION',
+        }),
+      ])
+    );
+  });
+
+  it('rejects an L that does not close back to P', () => {
+    const result = validatePeel({
+      P: 'Physical schooling develops social competence.',
+      E1: 'Daily peer negotiation teaches empathy.',
+      E2: 'Students form study groups around classroom whiteboards.',
+      L: 'Thus, economic policy remains important for national growth.',
+    });
+
+    expect(result.passed).toBe(false);
+    expect(result.checks.linkClosure).toBe('fail');
+    expect(result.issues).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ layer: 'L', code: 'L_NOT_CLOSED' }),
+      ])
+    );
   });
 });

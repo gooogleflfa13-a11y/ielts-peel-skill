@@ -10,17 +10,21 @@ export default function ApiKeyPanel({ settings, onChange }) {
         <span className="text-[11px] text-slate-500">仅存 sessionStorage · 不落盘</span>
       </div>
 
-      <div className="grid gap-3 md:grid-cols-3">
-        <div className="md:col-span-1">
-          <label className="mb-1.5 block text-xs text-slate-400">API Key *</label>
+      <div className="grid gap-3 md:grid-cols-2">
+        <div>
+          <label htmlFor="api-key" className="mb-1.5 block text-xs text-slate-400">
+            API Key <span aria-hidden="true">*</span>
+          </label>
           <div className="relative">
             <input
+              id="api-key"
               className="input pr-16 font-mono"
               type={showKey ? 'text' : 'password'}
               placeholder="sk-..."
               value={settings.apiKey}
               onChange={(e) => onChange({ apiKey: e.target.value })}
               autoComplete="off"
+              aria-required="true"
             />
             <button
               type="button"
@@ -33,19 +37,9 @@ export default function ApiKeyPanel({ settings, onChange }) {
         </div>
 
         <div>
-          <label className="mb-1.5 block text-xs text-slate-400">Base URL</label>
+          <label htmlFor="model" className="mb-1.5 block text-xs text-slate-400">Model</label>
           <input
-            className="input font-mono text-xs"
-            type="text"
-            placeholder="https://api.openai.com/v1"
-            value={settings.baseUrl}
-            onChange={(e) => onChange({ baseUrl: e.target.value })}
-          />
-        </div>
-
-        <div>
-          <label className="mb-1.5 block text-xs text-slate-400">Model</label>
-          <input
+            id="model"
             className="input font-mono text-xs"
             type="text"
             placeholder="gpt-4o-mini"
@@ -56,7 +50,7 @@ export default function ApiKeyPanel({ settings, onChange }) {
       </div>
 
       <p className="mt-3 text-[11px] leading-relaxed text-slate-500">
-        兼容 OpenAI Chat Completions。DeepSeek / 硅基流动 / Ollama 等改 Base URL + Model 即可。
+        Provider endpoint is configured by the server. The API key remains session-only.
       </p>
     </section>
   );

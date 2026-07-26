@@ -100,8 +100,9 @@ export default function ResultPanel({
             )}
           </div>
 
-          {result.validation && (
+          {(result.feedback || result.validation) && (
             <EvaluationPanel
+              feedback={result.feedback}
               validation={result.validation}
               weak={result.weak}
               topic={result.topic}
@@ -115,20 +116,6 @@ export default function ResultPanel({
                 E2 Entities
               </div>
               <EntityHighlighter entities={result.entities} />
-            </div>
-          )}
-
-          {result.semantic && (
-            <div className="rounded-lg border border-violet-400/20 bg-violet-400/5 px-3 py-2 text-sm">
-              <span className="font-mono text-xs text-violet-300">AI SEMANTIC</span>
-              <p className="mt-1 text-slate-300">
-                overall {result.semantic.overall} · P {result.semantic.P_score} · E1{' '}
-                {result.semantic.E1_score} · E2 {result.semantic.E2_score} · L{' '}
-                {result.semantic.L_score}
-              </p>
-              {result.semantic.topIssue && (
-                <p className="mt-1 text-[11px] text-slate-400">{result.semantic.topIssue}</p>
-              )}
             </div>
           )}
 
@@ -184,7 +171,14 @@ export default function ResultPanel({
                   </pre>
                 </details>
               )}
+
             </>
+          )}
+
+          {result.disclaimer && (
+            <p className="border-t border-white/10 pt-3 text-[11px] leading-relaxed text-slate-500">
+              {result.disclaimer}
+            </p>
           )}
         </div>
       )}

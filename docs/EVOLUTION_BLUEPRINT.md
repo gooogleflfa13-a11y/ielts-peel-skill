@@ -1,5 +1,9 @@
 # IELTS PEEL Hacker 进化蓝图：完整技术手册
 
+> Status: Historical
+>
+> This pre-Phase 0 architecture proposal is retained for decision history only. Its AI examiner, semantic scoring, numeric score, and request-controlled provider examples are obsolete and must not be treated as the current product contract. The current `/score` capability is deterministic **PEEL Structure Review** only; see the approved Phase 0 design and implementation plan under `docs/superpowers/`.
+
 > 从 Prompt Wrapper 到 Production-Grade Agentic System
 
 ---

@@ -106,12 +106,63 @@ const PHYSICAL_INDICATORS = [
   /\brestaurant\b/i,
 ];
 
+const CLOSURE_CUE = /^(?:thus|therefore|hence|consequently|overall|as a result|so)\b/i;
+const CLOSURE_STOP_WORDS = new Set([
+  'about',
+  'after',
+  'also',
+  'because',
+  'before',
+  'being',
+  'consequently',
+  'could',
+  'develops',
+  'from',
+  'hence',
+  'into',
+  'matter',
+  'matters',
+  'overall',
+  'remains',
+  'result',
+  'should',
+  'supports',
+  'therefore',
+  'these',
+  'this',
+  'those',
+  'thus',
+  'with',
+  'would',
+]);
+
+function meaningfulTerms(text) {
+  return new Set(
+    (text || '')
+      .toLowerCase()
+      .match(/[a-z]+/g)
+      ?.filter((word) => word.length >= 4 && !CLOSURE_STOP_WORDS.has(word)) || []
+  );
+}
+
 /**
  * @param {{ P: string, E1: string, E2: string, L: string }} peel
  */
 export function validatePeel(peel) {
   const warnings = [];
+  const issues = [];
   const score = { structure: 0, layers: 0, vocabs: 0, physical: 0 };
+  const checks = {
+    labels: 'pass',
+    layerBoundaries: 'pass',
+    e2Concreteness: 'pass',
+    linkClosure: 'pass',
+    bannedGlue: 'pass',
+  };
+  const addIssue = ({ layer = null, code, evidence, action, message }) => {
+    issues.push({ layer, code, evidence, action });
+    warnings.push(message);
+  };
 
   const missing = [];
   if (!peel?.P?.trim()) missing.push('P');
@@ -119,25 +170,97 @@ export function validatePeel(peel) {
   if (!peel?.E2?.trim()) missing.push('E2');
   if (!peel?.L?.trim()) missing.push('L');
   if (missing.length > 0) {
-    warnings.push(`Missing labels: ${missing.join(', ')}`);
+    checks.labels = 'fail';
+    for (const layer of missing) {
+      addIssue({
+        layer,
+        code: 'MISSING_LAYER',
+        evidence: `[${layer}] is empty or absent`,
+        action: `Provide exactly one sentence for [${layer}].`,
+        message: `Missing labels: ${layer}`,
+      });
+    }
   } else {
     score.structure = 1;
+  }
+
+  for (const layer of ['P', 'E1', 'E2', 'L']) {
+    const body = peel?.[layer]?.trim();
+    if (!body) continue;
+    const sentenceCount = Array.from(
+      new Intl.Segmenter('en', { granularity: 'sentence' }).segment(body)
+    ).filter((part) => part.segment.trim()).length;
+    if (sentenceCount !== 1) {
+      checks.layerBoundaries = 'fail';
+      if (layer === 'L') checks.linkClosure = 'fail';
+      addIssue({
+        layer,
+        code: 'SENTENCE_COUNT',
+        evidence: `${sentenceCount} sentences in [${layer}]`,
+        action: `Rewrite [${layer}] as exactly one sentence.`,
+        message: `${layer} must contain exactly one sentence`,
+      });
+    }
+    if (!/[.!?。！？](?:["'”’\)\]])?$/.test(body)) {
+      checks.layerBoundaries = 'fail';
+      if (layer === 'L') checks.linkClosure = 'fail';
+      addIssue({
+        layer,
+        code: 'TERMINAL_PUNCTUATION',
+        evidence: body,
+        action: `End [${layer}] with sentence-ending punctuation.`,
+        message: `${layer} lacks terminal punctuation`,
+      });
+    }
   }
 
   const allText = [peel?.P, peel?.E1, peel?.E2, peel?.L].join(' ');
   for (const pat of BANNED_PATTERNS) {
     if (pat.test(allText)) {
-      warnings.push(`Banned discourse glue detected: ${pat}`);
+      checks.bannedGlue = 'fail';
+      addIssue({
+        code: 'BANNED_GLUE',
+        evidence: allText.match(pat)?.[0] || String(pat),
+        action: 'Remove formulaic discourse glue from the PEEL body.',
+        message: `Banned discourse glue detected: ${pat}`,
+      });
     }
   }
 
   if (peel?.P) {
-    if (/\bfor example\b/i.test(peel.P)) warnings.push('P contains "for example"');
-    if (/\bsuch as\b/i.test(peel.P)) warnings.push('P contains "such as"');
+    if (/\bfor example\b/i.test(peel.P)) {
+      checks.layerBoundaries = 'fail';
+      addIssue({
+        layer: 'P',
+        code: 'P_EXAMPLE',
+        evidence: 'for example',
+        action: 'Keep P abstract and move examples to E2.',
+        message: 'P contains "for example"',
+      });
+    }
+    if (/\bsuch as\b/i.test(peel.P)) {
+      checks.layerBoundaries = 'fail';
+      addIssue({
+        layer: 'P',
+        code: 'P_EXAMPLE',
+        evidence: 'such as',
+        action: 'Keep P abstract and move examples to E2.',
+        message: 'P contains "such as"',
+      });
+    }
     const causeCount = (
       peel.P.match(/\b(because|leads to|results in|causes?|triggers?|due to)\b/gi) || []
     ).length;
-    if (causeCount > 1) warnings.push('P has excessive causal chains — keep abstract');
+    if (causeCount > 0) {
+      checks.layerBoundaries = 'fail';
+      addIssue({
+        layer: 'P',
+        code: 'P_CAUSAL_CHAIN',
+        evidence: peel.P,
+        action: 'State only the abstract verdict in P; move causality to E1.',
+        message: 'P has a causal chain — keep abstract',
+      });
+    }
   }
 
   if (peel?.E1) {
@@ -146,7 +269,16 @@ export function validatePeel(peel) {
     for (const term of ALL_E2_TERMS) {
       if (e1Lower.includes(term)) e1EntityCount++;
     }
-    if (e1EntityCount > 2) warnings.push('E1 contains concrete entities — move to E2');
+    if (e1EntityCount > 2) {
+      checks.layerBoundaries = 'fail';
+      addIssue({
+        layer: 'E1',
+        code: 'E1_CONCRETE_ENTITY',
+        evidence: peel.E1,
+        action: 'Move concrete people, places, objects, and actions to E2.',
+        message: 'E1 contains concrete entities — move to E2',
+      });
+    }
   }
 
   if (peel?.E2) {
@@ -161,21 +293,56 @@ export function validatePeel(peel) {
       if (phrase.length >= 4 && e2Lower.includes(phrase)) bankHits++;
     }
     if (physicalScore === 0 && bankHits === 0) {
-      warnings.push(
-        '⚠️ E2 lacks ANY physical entity — add a concrete person/place/object/action'
-      );
+      checks.e2Concreteness = 'fail';
+      addIssue({
+        layer: 'E2',
+        code: 'E2_NOT_CONCRETE',
+        evidence: peel.E2,
+        action: 'Add a concrete person, place, object, or observable action.',
+        message: 'E2 lacks ANY physical entity — add a concrete person/place/object/action',
+      });
       score.physical = 0;
     } else if (physicalScore + bankHits < 2) {
-      warnings.push('E2 is weak on physicality — goal: 2+ concrete indicators');
+      checks.e2Concreteness = 'fail';
+      addIssue({
+        layer: 'E2',
+        code: 'E2_WEAKLY_CONCRETE',
+        evidence: peel.E2,
+        action: 'Use at least two concrete indicators in E2.',
+        message: 'E2 is weak on physicality — goal: 2+ concrete indicators',
+      });
       score.physical = 0.5;
     } else {
       score.physical = 1;
     }
   }
 
-  if (peel?.L) {
-    if (peel.L.split(/[.?!]/).filter((s) => s.trim()).length > 2) {
-      warnings.push('L is too long — should be one sentence max');
+  if (peel?.L && /\b(for example|such as)\b/i.test(peel.L)) {
+    checks.linkClosure = 'fail';
+    addIssue({
+      layer: 'L',
+      code: 'L_NEW_EXAMPLE',
+      evidence: peel.L,
+      action: 'Close back to P without adding an example or new claim.',
+      message: 'L introduces new example material',
+    });
+  }
+
+  if (peel?.P?.trim() && peel?.L?.trim()) {
+    const pTerms = meaningfulTerms(peel.P);
+    const lTerms = meaningfulTerms(peel.L);
+    const overlap = [...pTerms].filter((term) => lTerms.has(term));
+    if (!CLOSURE_CUE.test(peel.L.trim()) || overlap.length === 0) {
+      checks.linkClosure = 'fail';
+      addIssue({
+        layer: 'L',
+        code: 'L_NOT_CLOSED',
+        evidence: overlap.length
+          ? 'L repeats P language but lacks an explicit closing cue.'
+          : 'L has no meaningful lexical overlap with P.',
+        action: 'Begin with a closing cue and restate at least one key term from P.',
+        message: 'L does not close explicitly back to P',
+      });
     }
   }
 
@@ -190,15 +357,39 @@ export function validatePeel(peel) {
 
   score.vocabs = score.physical;
 
-  return { warnings, score };
+  return {
+    passed: issues.length === 0,
+    checks,
+    issues,
+    warnings,
+    score,
+  };
 }
 
 export function validatePeels(peels) {
   const list = Array.isArray(peels) ? peels : [];
   const results = list.map((peel) => validatePeel(peel));
   const n = Math.max(results.length, 1);
+  const checkNames = [
+    'labels',
+    'layerBoundaries',
+    'e2Concreteness',
+    'linkClosure',
+    'bannedGlue',
+  ];
   return {
-    passed: results.length > 0 && results.every((r) => r.warnings.length === 0),
+    passed: results.length > 0 && results.every((r) => r.passed),
+    checks: Object.fromEntries(
+      checkNames.map((name) => [
+        name,
+        results.length > 0 && results.every((result) => result.checks[name] === 'pass')
+          ? 'pass'
+          : 'fail',
+      ])
+    ),
+    issues: results.flatMap((result, peelIndex) =>
+      result.issues.map((issue) => ({ ...issue, peelIndex }))
+    ),
     details: results,
     summary: {
       structure: results.reduce((s, r) => s + r.score.structure, 0) / n,

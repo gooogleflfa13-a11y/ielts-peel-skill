@@ -1,11 +1,16 @@
 import { buildWizardPrompt } from '../prompts/wizardPrompt.js';
 import { callLLM } from '../utils/llmClient.js';
-import { parsePeelOutput } from '../parsing/peelParser.js';
-import { validatePeels } from '../evaluation/validator.js';
 import { retrieveTopic } from '../knowledge/topicRetriever.js';
-import { recordPeelResult, addE2Fuel } from '../memory/userMemory.js';
+import { createNullMemoryStore } from '../memory/memoryStore.js';
 import { sanitizeFuelText, sanitizeUserInput, wrapAsTaskPayload } from '../utils/sanitize.js';
 import { MAX_INPUT_CHARS } from '../utils/constants.js';
+import {
+  buildRepairInstruction,
+  evaluatePeelOutput,
+  evaluateWizardQuestions,
+  finalizeGeneratedOutput,
+  wizardScriptIssues,
+} from '../evaluation/outputQuality.js';
 
 export async function runWizardSkill({
   input,
@@ -14,7 +19,8 @@ export async function runWizardSkill({
   baseUrl,
   model,
   userId = 'default',
-}) {
+  memoryStore = createNullMemoryStore(),
+}, { llmRuntime } = {}) {
   const { clean: safeInput } = sanitizeUserInput(input, {
     maxLen: MAX_INPUT_CHARS,
   });
@@ -34,30 +40,57 @@ export async function runWizardSkill({
 
   const { content, usage } = await callLLM({
     apiKey,
-    baseUrl,
     model,
     system,
     user: wrapAsTaskPayload(userMessage),
     history,
     maxTokens: 3500,
+  }, llmRuntime);
+
+  const expectsScripts = history.length > 0;
+  const evaluate = expectsScripts
+    ? (candidate) =>
+        evaluatePeelOutput(candidate, {
+          minPeels: 3,
+          maxPeels: 4,
+          extraIssues: wizardScriptIssues,
+        })
+    : evaluateWizardQuestions;
+  const wrappedUser = wrapAsTaskPayload(userMessage);
+  const finalized = await finalizeGeneratedOutput({
+    content,
+    usage,
+    evaluate,
+    repair: ({ content: failedContent, issues }) =>
+      callLLM({
+        apiKey,
+        model,
+        system,
+        user: buildRepairInstruction(issues),
+        history: [
+          ...history,
+          { role: 'user', content: wrappedUser },
+          { role: 'assistant', content: failedContent },
+        ],
+        maxTokens: 3500,
+      }, llmRuntime),
   });
 
-  const parsed = parsePeelOutput(content);
-  const validation =
-    parsed.peels.length > 0
-      ? validatePeels(parsed.peels)
-      : {
-          passed: true,
-          details: [],
-          summary: { structure: 0, layers: 0, physical: 0, totalWarnings: 0 },
-          allWarnings: [],
-        };
+  const topic = {
+    id: classification.topicId,
+    score: classification.score,
+    matchedKeywords: classification.matchedKeywords,
+  };
+
+  if (!finalized.ok) {
+    return { ...finalized, topic, entities: [] };
+  }
 
   // Store sanitized user answers as E2 fuel (no email/phone; max 300 chars)
   if (history.length > 0) {
     const fuel = sanitizeFuelText(safeInput, { maxLen: 300 });
     if (fuel) {
-      addE2Fuel(userId, {
+      await memoryStore.addE2Fuel({ userId }, {
         topic: classification.topicId || 'General',
         entity: fuel.slice(0, 120),
         sourceQuestion: 'wizard-turn',
@@ -66,23 +99,16 @@ export async function runWizardSkill({
     }
   }
 
-  recordPeelResult(userId, {
+  await memoryStore.recordResult({ userId }, {
     topicId: classification.topicId,
-    validation,
+    validation: finalized.validation,
     command: 'wizard',
+    source: 'agent',
   });
 
   return {
-    content,
-    parsed,
-    usage,
-    topic: {
-      id: classification.topicId,
-      score: classification.score,
-      matchedKeywords: classification.matchedKeywords,
-    },
-    validation,
+    ...finalized,
+    topic,
     entities: [],
-    retries: 0,
   };
 }
