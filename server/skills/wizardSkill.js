@@ -11,6 +11,7 @@ import {
   finalizeGeneratedOutput,
   wizardScriptIssues,
 } from '../evaluation/outputQuality.js';
+import { determineWizardState, wizardStatePolicy } from '../wizard/wizardState.js';
 
 export async function runWizardSkill({
   input,
@@ -19,12 +20,16 @@ export async function runWizardSkill({
   baseUrl,
   model,
   userId = 'default',
+  phase = null,
   memoryStore = createNullMemoryStore(),
 }, { llmRuntime } = {}) {
   const { clean: safeInput } = sanitizeUserInput(input, {
     maxLen: MAX_INPUT_CHARS,
   });
   const { classification, knowledge: topicKnowledge } = retrieveTopic(safeInput);
+
+  const wizardState = determineWizardState({ history, phase });
+  const policy = wizardStatePolicy(wizardState);
 
   const system = buildWizardPrompt({
     topicKnowledge,
@@ -47,8 +52,7 @@ export async function runWizardSkill({
     maxTokens: 3500,
   }, llmRuntime);
 
-  const expectsScripts = history.length > 0;
-  const evaluate = expectsScripts
+  const evaluate = policy.expectsScripts
     ? (candidate) =>
         evaluatePeelOutput(candidate, {
           minPeels: 3,
@@ -86,8 +90,8 @@ export async function runWizardSkill({
     return { ...finalized, topic, entities: [] };
   }
 
-  // Store sanitized user answers as E2 fuel (no email/phone; max 300 chars)
-  if (history.length > 0) {
+  // Persist only when the state machine allows it (READY_TO_GENERATE).
+  if (policy.persists) {
     const fuel = sanitizeFuelText(safeInput, { maxLen: 300 });
     if (fuel) {
       await memoryStore.addE2Fuel({ userId }, {
@@ -97,14 +101,14 @@ export async function runWizardSkill({
         sourceAnswer: fuel.slice(0, 200),
       });
     }
-  }
 
-  await memoryStore.recordResult({ userId }, {
-    topicId: classification.topicId,
-    validation: finalized.validation,
-    command: 'wizard',
-    source: 'agent',
-  });
+    await memoryStore.recordResult({ userId }, {
+      topicId: classification.topicId,
+      validation: finalized.validation,
+      command: 'wizard',
+      source: 'agent',
+    });
+  }
 
   return {
     ...finalized,

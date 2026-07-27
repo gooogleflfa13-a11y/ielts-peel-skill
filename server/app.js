@@ -6,21 +6,14 @@ import express from 'express';
 import { apiError, publicError, sseError } from './utils/errors.js';
 import { log } from './utils/logger.js';
 import { createRateLimiter } from './utils/rateLimit.js';
-import { API_VERSION, COMMANDS, MAX_INPUT_CHARS } from './utils/constants.js';
+import { API_VERSION, MAX_INPUT_CHARS } from './utils/constants.js';
+import { COMMAND_NAMES, lookup, requiresApiKey } from './commands/registry.js';
 import {
   createLocalFileMemoryStore,
   createNullMemoryStore,
 } from './memory/memoryStore.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-
-function bankNeedsApiKey(input) {
-  return (
-    /^\s*\/?bank\s+(peel|answer|答|作答)\b/i.test(input) ||
-    (/\bpeel\b/i.test(input) &&
-      !/random|search|links|stats|抽题|随机|搜|关联/i.test(input))
-  );
-}
 
 function hasOwn(object, property) {
   return Object.prototype.hasOwnProperty.call(object, property);
@@ -33,14 +26,14 @@ function validateBody(body, forcedCommand) {
 
   const command = forcedCommand || requestBody.command || 'peel';
   const input = String(requestBody.input || '');
-  if (!COMMANDS.includes(command)) throw publicError('INVALID_REQUEST');
+  const cmd = lookup(command);
+  if (!cmd) throw publicError('INVALID_REQUEST');
   if (input.length > MAX_INPUT_CHARS) throw publicError('INVALID_REQUEST');
   if (!input.trim() && command !== 'wizard' && command !== 'bank') {
     throw publicError('INVALID_REQUEST');
   }
 
-  const needsKey =
-    command !== 'score' && !(command === 'bank' && !bankNeedsApiKey(input));
+  let needsKey = requiresApiKey(command, input);
   if (
     needsKey &&
     (typeof requestBody.apiKey !== 'string' || !requestBody.apiKey.trim())
@@ -127,8 +120,8 @@ export function createApp({
       agent: 'IELTS PEEL Hacker',
       version: API_VERSION,
       commands: enablePrivateQuestionBank
-        ? COMMANDS
-        : COMMANDS.filter((command) => command !== 'bank'),
+        ? COMMAND_NAMES
+        : COMMAND_NAMES.filter((command) => command !== 'bank'),
       stream: {
         tokenStreamCommands: ['peel'],
         note: 'Other commands accepted on /stream but complete in one shot.',

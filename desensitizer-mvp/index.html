@@ -1,0 +1,554 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>本地脱敏助手 · LocalRedact MVP</title>
+<style>
+  :root {
+    --bg: #f4f6f9;
+    --panel: #ffffff;
+    --border: #e2e8f0;
+    --text: #1e293b;
+    --muted: #64748b;
+    --primary: #2563eb;
+    --primary-dark: #1d4ed8;
+    --green: #16a34a;
+    --radius: 10px;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif;
+    background: var(--bg); color: var(--text); min-height: 100vh;
+  }
+  header {
+    background: #0f172a; color: #fff; padding: 14px 24px;
+    display: flex; align-items: center; gap: 16px; flex-wrap: wrap;
+  }
+  header h1 { font-size: 18px; font-weight: 600; }
+  .badge {
+    font-size: 12px; padding: 3px 10px; border-radius: 20px;
+    background: #14532d; color: #86efac; border: 1px solid #166534;
+  }
+  .tabs { margin-left: auto; display: flex; gap: 8px; }
+  .tab-btn {
+    background: transparent; color: #94a3b8; border: 1px solid #334155;
+    padding: 6px 18px; border-radius: 8px; cursor: pointer; font-size: 14px;
+  }
+  .tab-btn.active { background: var(--primary); border-color: var(--primary); color: #fff; }
+  main { max-width: 1280px; margin: 0 auto; padding: 20px 24px 60px; }
+  .steps {
+    display: flex; gap: 8px; font-size: 13px; color: var(--muted);
+    margin-bottom: 16px; flex-wrap: wrap;
+  }
+  .steps span { background: var(--panel); border: 1px solid var(--border); padding: 4px 12px; border-radius: 20px; }
+  .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  @media (max-width: 900px) { .grid { grid-template-columns: 1fr; } }
+  .panel {
+    background: var(--panel); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 16px; display: flex; flex-direction: column;
+  }
+  .panel h2 { font-size: 15px; margin-bottom: 10px; display: flex; align-items: center; gap: 8px; }
+  .panel h2 .hint { font-size: 12px; color: var(--muted); font-weight: normal; }
+  textarea {
+    width: 100%; min-height: 320px; border: 1px solid var(--border);
+    border-radius: 8px; padding: 12px; font-size: 14px; line-height: 1.8;
+    resize: vertical; font-family: inherit; color: var(--text);
+  }
+  textarea:focus { outline: 2px solid #bfdbfe; }
+  .toolbar { display: flex; gap: 8px; margin-top: 10px; flex-wrap: wrap; align-items: center; }
+  button {
+    border: none; border-radius: 8px; padding: 8px 16px; font-size: 14px;
+    cursor: pointer; background: #e2e8f0; color: var(--text); font-family: inherit;
+  }
+  button:hover { filter: brightness(0.95); }
+  button.primary { background: var(--primary); color: #fff; }
+  button.primary:hover { background: var(--primary-dark); filter: none; }
+  button.success { background: var(--green); color: #fff; }
+  button:disabled { opacity: 0.45; cursor: not-allowed; }
+  select {
+    border: 1px solid var(--border); border-radius: 8px; padding: 7px 10px;
+    font-size: 14px; font-family: inherit; background: #fff; color: var(--text);
+  }
+  #preview {
+    border: 1px solid var(--border); border-radius: 8px; padding: 12px;
+    min-height: 320px; max-height: 480px; overflow-y: auto; font-size: 14px;
+    line-height: 2.0; white-space: pre-wrap; word-break: break-all; background: #fcfcfd;
+  }
+  .hl {
+    padding: 1px 3px; border-radius: 4px; cursor: pointer;
+    border-bottom: 2px solid rgba(0,0,0,0.25); position: relative;
+  }
+  .hl.off { background: #f1f5f9 !important; border-bottom: 2px dashed #cbd5e1; color: #94a3b8; text-decoration: line-through; }
+  .hl .tag {
+    font-size: 10px; background: rgba(15,23,42,0.75); color: #fff;
+    border-radius: 3px; padding: 0 4px; margin-left: 2px; vertical-align: super;
+  }
+  .output-box {
+    border: 1px solid var(--border); border-radius: 8px; padding: 12px;
+    min-height: 200px; max-height: 380px; overflow-y: auto; font-size: 14px;
+    line-height: 2.0; white-space: pre-wrap; word-break: break-all; background: #f8fafc;
+  }
+  .output-box .ph { background: #dbeafe; color: #1e40af; border-radius: 4px; padding: 1px 4px; font-weight: 600; }
+  .stat { font-size: 13px; color: var(--muted); margin-top: 8px; }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; margin-top: 10px; }
+  th, td { border: 1px solid var(--border); padding: 6px 10px; text-align: left; word-break: break-all; }
+  th { background: #f8fafc; font-weight: 600; }
+  td.ph-cell { color: #1e40af; font-weight: 600; white-space: nowrap; }
+  .notice {
+    background: #fffbeb; border: 1px solid #fde68a; color: #92400e;
+    border-radius: 8px; padding: 10px 14px; font-size: 13px; margin-bottom: 16px; line-height: 1.7;
+  }
+  .toast {
+    position: fixed; bottom: 30px; left: 50%; transform: translateX(-50%);
+    background: #0f172a; color: #fff; padding: 10px 22px; border-radius: 8px;
+    font-size: 14px; opacity: 0; transition: opacity .3s; pointer-events: none; z-index: 99;
+  }
+  .toast.show { opacity: 1; }
+  .legend { display: flex; gap: 10px; flex-wrap: wrap; margin: 8px 0 4px; font-size: 12px; color: var(--muted); }
+  .legend i { display: inline-block; width: 12px; height: 12px; border-radius: 3px; margin-right: 3px; vertical-align: -1px; font-style: normal; }
+  footer { text-align: center; font-size: 12px; color: #94a3b8; padding: 20px; }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>🔒 本地脱敏助手 <span style="font-weight:400;font-size:13px;color:#94a3b8">LocalRedact MVP v0.1</span></h1>
+  <span class="badge">✅ 100% 本地运行 · 零网络请求 · 断网可用</span>
+  <div class="tabs">
+    <button class="tab-btn active" id="tabBtn1" onclick="switchTab(1)">① 脱敏处理</button>
+    <button class="tab-btn" id="tabBtn2" onclick="switchTab(2)">② 逆向还原</button>
+  </div>
+</header>
+
+<main>
+  <div class="notice">
+    <b>工作流程：</b>粘贴原文 → 扫描高亮 → <b>人工点选确认</b>（点击高亮词可取消脱敏；划选文本可手动补标）→ 一键替换 → 复制脱敏文本发给 AI → AI 回答粘贴到「逆向还原」页 → 一键还原真实名称。<br>
+    <b>合规说明：</b>本页面无任何网络请求，映射表仅存于本机浏览器。最终替换范围由您人工确认，软件仅提供辅助识别。
+  </div>
+
+  <!-- ========== TAB 1 脱敏 ========== -->
+  <div id="tab1">
+    <div class="steps">
+      <span>第一步：粘贴文本并扫描</span><span>第二步：点选确认（黄金环节）</span><span>第三步：生成脱敏文本与映射表</span>
+    </div>
+    <div class="grid">
+      <div class="panel">
+        <h2>📄 原始文本 <span class="hint" id="scanHint">粘贴后点击「扫描敏感信息」</span></h2>
+        <div id="inputWrap">
+          <textarea id="inputText" placeholder="在此粘贴合同、财报、判决书等原始文本……&#10;&#10;（点击下方「填入示例」可快速体验）"></textarea>
+        </div>
+        <div id="previewWrap" style="display:none">
+          <div class="legend" id="legend"></div>
+          <div id="preview"></div>
+        </div>
+        <div class="toolbar">
+          <button class="primary" id="btnScan" onclick="doScan()">🔍 扫描敏感信息</button>
+          <button onclick="fillSample()">填入示例</button>
+          <button onclick="resetAll()">重新开始</button>
+        </div>
+        <div class="toolbar" id="manualBar" style="display:none">
+          <span style="font-size:13px;color:var(--muted)">漏检补标：在上方划选文本后 →</span>
+          <select id="manualType"></select>
+          <button onclick="markSelection()">✏️ 标记选中文本</button>
+        </div>
+        <div class="stat" id="entityStat"></div>
+      </div>
+
+      <div class="panel">
+        <h2>🛡️ 脱敏结果 <span class="hint">仅此文本可发送给公网 AI</span></h2>
+        <div class="output-box" id="outputBox" style="flex:1"><span style="color:#94a3b8">等待生成……</span></div>
+        <div class="toolbar">
+          <button class="success" id="btnGen" onclick="doGenerate()" disabled>⚡ 一键替换生成</button>
+          <button id="btnCopy" onclick="copyOutput()" disabled>📋 复制脱敏文本</button>
+        </div>
+        <h2 style="margin-top:16px">🗂️ 本地映射表 <span class="hint">仅存本机 · 不出网</span></h2>
+        <div id="mapWrap" style="overflow-y:auto;max-height:240px">
+          <span style="color:#94a3b8;font-size:13px">生成后显示</span>
+        </div>
+        <div class="toolbar">
+          <button id="btnExport" onclick="exportMap()" disabled>💾 导出映射表 (JSON)</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ========== TAB 2 还原 ========== -->
+  <div id="tab2" style="display:none">
+    <div class="steps">
+      <span>将 AI 的分析回答粘贴到左侧 → 一键还原</span>
+    </div>
+    <div class="grid">
+      <div class="panel">
+        <h2>🤖 AI 回答（含代号）</h2>
+        <textarea id="restoreInput" placeholder="将 ChatGPT / Claude / DeepSeek 等大模型的回答粘贴到这里……"></textarea>
+        <div class="toolbar">
+          <button class="primary" onclick="doRestore()">🔓 一键还原</button>
+        </div>
+      </div>
+      <div class="panel">
+        <h2>✅ 还原后的最终报告</h2>
+        <div class="output-box" id="restoreBox" style="flex:1"><span style="color:#94a3b8">等待还原……</span></div>
+        <div class="toolbar">
+          <button id="btnCopyRestore" onclick="copyRestore()" disabled>📋 复制还原结果</button>
+        </div>
+        <div class="stat" id="restoreStat"></div>
+      </div>
+    </div>
+  </div>
+</main>
+
+<footer>LocalRedact MVP · 纯本地单文件应用 · 关闭页面前请导出映射表以便日后还原</footer>
+<div class="toast" id="toast"></div>
+
+<script>
+"use strict";
+/* ============ 实体类型定义 ============ */
+const TYPES = {
+  company: { label: "公司",     color: "#fde68a", letter: true  },
+  person:  { label: "人名",     color: "#fbcfe8", letter: true  },
+  amount:  { label: "金额",     color: "#bbf7d0", letter: false },
+  idcard:  { label: "身份证",   color: "#fecaca", letter: false },
+  credit:  { label: "信用代码", color: "#fca5a5", letter: false },
+  phone:   { label: "电话",     color: "#c7d2fe", letter: false },
+  bank:    { label: "银行卡",   color: "#fdba74", letter: false },
+  email:   { label: "邮箱",     color: "#a5f3fc", letter: false },
+  caseno:  { label: "案号",     color: "#ddd6fe", letter: false },
+  addr:    { label: "地址",     color: "#d9f99d", letter: false },
+  other:   { label: "信息",     color: "#e5e7eb", letter: false },
+};
+
+/* ============ 全局状态 ============ */
+let rawText = "";
+let entities = [];   // {id, start, end, text, type, enabled, source}
+let mapping = {};    // 原文 -> 代号
+let reverseMap = {}; // 代号 -> 原文
+let entitySeq = 0;
+
+/* ============ 校验算法 ============ */
+function validIdCard(s) {
+  if (!/^\d{17}[\dXx]$/.test(s)) return false;
+  const w = [7,9,10,5,8,4,2,1,6,3,7,9,10,5,8,4,2], codes = "10X98765432";
+  let sum = 0;
+  for (let i = 0; i < 17; i++) sum += (+s[i]) * w[i];
+  return codes[sum % 11] === s[17].toUpperCase();
+}
+function luhn(s) {
+  let sum = 0, alt = false;
+  for (let i = s.length - 1; i >= 0; i--) {
+    let d = +s[i];
+    if (alt) { d *= 2; if (d > 9) d -= 9; }
+    sum += d; alt = !alt;
+  }
+  return sum % 10 === 0;
+}
+
+/* ============ 本地检测引擎（纯正则 + 校验，无任何 AI/网络） ============ */
+function detect(text) {
+  const found = [];
+  const push = (m, type, offset = 0, str = null) => {
+    const s = str === null ? m[0] : str;
+    found.push({ start: m.index + offset, end: m.index + offset + s.length, text: s, type });
+  };
+  let m;
+
+  // 公司 / 事务所（词首边界：句首、非中文字符、常见连接动词之后）
+  const reCompany = /(?<=^|[^一-龥]|[向与和同由把将于至在给对为系从受经聘托授委购售租借告被诉]|甲方|乙方|丙方)[一-龥A-Za-z0-9]{2,22}?(?:股份有限公司|有限责任公司|有限公司|会计师事务所（特殊普通合伙）|会计师事务所|律师事务所|合伙企业（有限合伙）|合伙企业|集团有限|控股集团)/g;
+  while ((m = reCompany.exec(text))) push(m, "company");
+
+  // 统一社会信用代码（18 位）
+  const reCredit = /(?<![0-9A-Z])[0-9A-HJ-NPQRTUWXY]{2}\d{6}[0-9A-HJ-NPQRTUWXY]{10}(?![0-9A-Z])/g;
+  while ((m = reCredit.exec(text))) push(m, "credit");
+
+  // 身份证（18 位 + 校验位验证，杜绝误报）
+  const reId = /(?<!\d)\d{17}[\dXx](?![\dXx])/g;
+  while ((m = reId.exec(text))) { if (validIdCard(m[0])) push(m, "idcard"); }
+
+  // 手机号
+  const rePhone = /(?<!\d)1[3-9]\d{9}(?!\d)/g;
+  while ((m = rePhone.exec(text))) push(m, "phone");
+
+  // 银行卡（16-19 位 + Luhn 校验）
+  const reBank = /(?<!\d)\d{16,19}(?!\d)/g;
+  while ((m = reBank.exec(text))) { if (luhn(m[0])) push(m, "bank"); }
+
+  // 邮箱
+  const reEmail = /[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}/g;
+  while ((m = reEmail.exec(text))) push(m, "email");
+
+  // 案号：（2025）粤03民终1234号
+  const reCase = /[（(]\s?20\d{2}\s?[）)][一-龥0-9]{2,18}号/g;
+  while ((m = reCase.exec(text))) push(m, "caseno");
+
+  // 金额：带货币符号 / 千分位 / 元、万元、亿元结尾
+  const reAmount = /(?:人民币|美元|￥|¥|\$)\s?\d[\d,]*(?:\.\d+)?(?:\s?(?:万|亿)?元)?|\d{1,3}(?:,\d{3})+(?:\.\d+)?(?:\s?(?:万|亿)?元)?|(?<![\d.,])\d+(?:\.\d+)?\s?(?:万元|亿元|元)(?![一-龥]?[旦帅])/g;
+  while ((m = reAmount.exec(text))) push(m, "amount");
+
+  // 去重叠：按起点排序，优先保留更长的匹配
+  found.sort((a, b) => a.start - b.start || (b.end - b.start) - (a.end - a.start));
+  const result = [];
+  let lastEnd = -1;
+  for (const f of found) {
+    if (f.start >= lastEnd) { result.push(f); lastEnd = f.end; }
+  }
+  return result;
+}
+
+/* ============ 扫描 ============ */
+function doScan() {
+  const input = document.getElementById("inputText");
+  rawText = input.value;
+  if (!rawText.trim()) { toast("请先粘贴文本"); return; }
+  entities = detect(rawText).map(e => ({ ...e, id: ++entitySeq, enabled: true, source: "auto" }));
+  document.getElementById("inputWrap").style.display = "none";
+  document.getElementById("previewWrap").style.display = "";
+  document.getElementById("manualBar").style.display = "";
+  document.getElementById("btnScan").disabled = true;
+  document.getElementById("btnGen").disabled = false;
+  document.getElementById("scanHint").textContent = "点击高亮词可切换是否脱敏；划选文本可手动补标";
+  renderLegend();
+  renderPreview();
+}
+
+function renderLegend() {
+  const el = document.getElementById("legend");
+  el.innerHTML = Object.entries(TYPES)
+    .map(([k, t]) => `<span><i style="background:${t.color}"></i>${t.label}</span>`).join("");
+}
+
+function renderPreview() {
+  const el = document.getElementById("preview");
+  el.innerHTML = "";
+  const sorted = [...entities].sort((a, b) => a.start - b.start);
+  let pos = 0;
+  for (const e of sorted) {
+    if (e.start > pos) el.appendChild(document.createTextNode(rawText.slice(pos, e.start)));
+    const span = document.createElement("span");
+    span.className = "hl" + (e.enabled ? "" : " off");
+    span.style.background = e.enabled ? TYPES[e.type].color : "";
+    span.dataset.id = e.id;
+    span.title = (e.enabled ? "点击取消脱敏 · " : "点击恢复脱敏 · ") + TYPES[e.type].label + (e.source === "manual" ? "（手动）" : "");
+    span.textContent = e.text;
+    const tag = document.createElement("span");
+    tag.className = "tag";
+    tag.textContent = TYPES[e.type].label;
+    span.appendChild(tag);
+    span.onclick = () => {
+      const sel = window.getSelection();
+      if (sel && !sel.isCollapsed) return; // 用户在划选，不触发切换
+      e.enabled = !e.enabled;
+      renderPreview();
+    };
+    el.appendChild(span);
+    pos = e.end;
+  }
+  if (pos < rawText.length) el.appendChild(document.createTextNode(rawText.slice(pos)));
+  updateStat();
+}
+
+function updateStat() {
+  const on = entities.filter(e => e.enabled).length;
+  document.getElementById("entityStat").textContent =
+    `共检测/标记 ${entities.length} 处敏感信息，已确认脱敏 ${on} 处，已忽略 ${entities.length - on} 处。`;
+}
+
+/* ============ 手动补标 ============ */
+function getAbsOffset(root, node, offsetInNode) {
+  // 累加 preview 内位于 node 之前的文本长度（跳过 .tag 标签内的文字）
+  let total = 0;
+  const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, {
+    acceptNode: n => n.parentElement.classList.contains("tag") ? NodeFilter.FILTER_REJECT : NodeFilter.FILTER_ACCEPT
+  });
+  let cur;
+  while ((cur = walker.nextNode())) {
+    if (cur === node) return total + offsetInNode;
+    total += cur.textContent.length;
+  }
+  return -1;
+}
+
+function markSelection() {
+  const sel = window.getSelection();
+  const root = document.getElementById("preview");
+  if (!sel || sel.isCollapsed) { toast("请先在原文中划选一段文本"); return; }
+  const range = sel.getRangeAt(0);
+  if (!root.contains(range.startContainer) || !root.contains(range.endContainer)) {
+    toast("请在左侧原文区域内划选"); return;
+  }
+  let s = getAbsOffset(root, range.startContainer, range.startOffset);
+  let e = getAbsOffset(root, range.endContainer, range.endOffset);
+  if (s < 0 || e < 0) { toast("无法定位选区，请重试"); return; }
+  if (s > e) [s, e] = [e, s];
+  if (s === e) { toast("选区为空"); return; }
+  // 与现有实体重叠则拒绝
+  for (const ent of entities) {
+    if (s < ent.end && e > ent.start) { toast("选区与已有标记重叠，请先点击取消该标记"); sel.removeAllRanges(); return; }
+  }
+  const type = document.getElementById("manualType").value;
+  entities.push({ id: ++entitySeq, start: s, end: e, text: rawText.slice(s, e), type, enabled: true, source: "manual" });
+  sel.removeAllRanges();
+  renderPreview();
+  toast("已标记：" + rawText.slice(s, e));
+}
+
+/* ============ 生成脱敏文本 ============ */
+function seqLabel(n, useLetter) {
+  if (!useLetter) return String(n);
+  let s = "";
+  n -= 1;
+  do { s = String.fromCharCode(65 + (n % 26)) + s; n = Math.floor(n / 26) - 1; } while (n >= 0);
+  return s;
+}
+
+function doGenerate() {
+  const on = entities.filter(e => e.enabled).sort((a, b) => a.start - b.start);
+  if (!on.length) { toast("当前没有已确认的脱敏项"); return; }
+  mapping = {}; reverseMap = {};
+  const counters = {};
+  for (const e of on) {
+    if (mapping[e.text]) continue; // 同一原文 → 同一代号（指代一致性）
+    counters[e.type] = (counters[e.type] || 0) + 1;
+    const ph = `[${TYPES[e.type].label}${seqLabel(counters[e.type], TYPES[e.type].letter)}]`;
+    mapping[e.text] = ph;
+    reverseMap[ph] = e.text;
+  }
+  // 拼接输出
+  let out = "", pos = 0;
+  for (const e of on) {
+    out += rawText.slice(pos, e.start) + mapping[e.text];
+    pos = e.end;
+  }
+  out += rawText.slice(pos);
+
+  const box = document.getElementById("outputBox");
+  box.innerHTML = "";
+  // 高亮渲染代号
+  const escRe = /(\[[^\[\]]{1,20}\])/g;
+  out.split(escRe).forEach(part => {
+    if (reverseMap[part]) {
+      const s = document.createElement("span");
+      s.className = "ph"; s.textContent = part;
+      box.appendChild(s);
+    } else {
+      box.appendChild(document.createTextNode(part));
+    }
+  });
+  box.dataset.plain = out;
+
+  renderMapTable();
+  try { localStorage.setItem("localredact_map", JSON.stringify(reverseMap)); } catch (_) {}
+  document.getElementById("btnCopy").disabled = false;
+  document.getElementById("btnExport").disabled = false;
+  toast(`已生成脱敏文本，共替换 ${Object.keys(mapping).length} 个不同实体`);
+}
+
+function renderMapTable() {
+  const wrap = document.getElementById("mapWrap");
+  const rows = Object.entries(reverseMap)
+    .map(([ph, orig]) => `<tr><td class="ph-cell">${escapeHtml(ph)}</td><td>${escapeHtml(orig)}</td></tr>`).join("");
+  wrap.innerHTML = `<table><tr><th style="width:110px">代号</th><th>真实内容（仅存本机）</th></tr>${rows}</table>`;
+}
+
+function escapeHtml(s) {
+  return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+}
+
+/* ============ 逆向还原 ============ */
+function doRestore() {
+  let text = document.getElementById("restoreInput").value;
+  if (!text.trim()) { toast("请先粘贴 AI 的回答"); return; }
+  let map = reverseMap;
+  if (!Object.keys(map).length) {
+    try { map = JSON.parse(localStorage.getItem("localredact_map") || "{}"); } catch (_) { map = {}; }
+  }
+  if (!Object.keys(map).length) { toast("本机没有映射表，请先在「脱敏处理」页生成"); return; }
+  let count = 0;
+  const keys = Object.keys(map).sort((a, b) => b.length - a.length);
+  for (const ph of keys) {
+    const before = text.length;
+    text = text.split(ph).join(map[ph]);
+    if (text.length !== before || text.includes(map[ph])) {
+      const n = (document.getElementById("restoreInput").value.split(ph).length - 1);
+      count += n;
+    }
+  }
+  const box = document.getElementById("restoreBox");
+  box.textContent = text;
+  box.dataset.plain = text;
+  document.getElementById("btnCopyRestore").disabled = false;
+  document.getElementById("restoreStat").textContent = `已完成还原，共替换 ${count} 处代号。全程本地处理，未发生任何网络传输。`;
+}
+
+/* ============ 工具函数 ============ */
+function copyOutput() { copyText(document.getElementById("outputBox").dataset.plain || ""); }
+function copyRestore() { copyText(document.getElementById("restoreBox").dataset.plain || ""); }
+function copyText(t) {
+  if (!t) { toast("没有可复制的内容"); return; }
+  navigator.clipboard.writeText(t).then(() => toast("已复制到剪贴板 ✅"))
+    .catch(() => { // 兼容降级
+      const ta = document.createElement("textarea");
+      ta.value = t; document.body.appendChild(ta); ta.select();
+      document.execCommand("copy"); ta.remove(); toast("已复制到剪贴板 ✅");
+    });
+}
+
+function exportMap() {
+  const blob = new Blob([JSON.stringify(reverseMap, null, 2)], { type: "application/json" });
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = "localredact_映射表_" + new Date().toISOString().slice(0, 10) + ".json";
+  a.click();
+  URL.revokeObjectURL(a.href);
+}
+
+function resetAll() {
+  if (entities.length && !confirm("将清空当前文本与标记（映射表保留在本机），确定重新开始？")) return;
+  rawText = ""; entities = [];
+  document.getElementById("inputText").value = "";
+  document.getElementById("inputWrap").style.display = "";
+  document.getElementById("previewWrap").style.display = "none";
+  document.getElementById("manualBar").style.display = "none";
+  document.getElementById("btnScan").disabled = false;
+  document.getElementById("btnGen").disabled = true;
+  document.getElementById("btnCopy").disabled = true;
+  document.getElementById("entityStat").textContent = "";
+  document.getElementById("outputBox").innerHTML = '<span style="color:#94a3b8">等待生成……</span>';
+  document.getElementById("scanHint").textContent = "粘贴后点击「扫描敏感信息」";
+}
+
+function switchTab(n) {
+  document.getElementById("tab1").style.display = n === 1 ? "" : "none";
+  document.getElementById("tab2").style.display = n === 2 ? "" : "none";
+  document.getElementById("tabBtn1").classList.toggle("active", n === 1);
+  document.getElementById("tabBtn2").classList.toggle("active", n === 2);
+}
+
+let toastTimer;
+function toast(msg) {
+  const t = document.getElementById("toast");
+  t.textContent = msg; t.classList.add("show");
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => t.classList.remove("show"), 2200);
+}
+
+function fillSample() {
+  document.getElementById("inputText").value =
+`服务器采购合同（节选）
+
+深圳市腾讯计算机系统有限公司（甲方，统一社会信用代码：91440300708461136T，联系人：张伟，电话：13800138000，邮箱：zhangwei@example.com）同意向北京百度网讯科技有限公司（乙方）采购服务器设备一批，合同总金额为人民币15,000,000元，甲方应于2026年3月1日前支付首笔款项7,500,000元。
+
+若甲方逾期付款超过三十日，乙方有权解除本合同，甲方需向乙方支付1,500,000元违约金。本合同争议由深圳国际仲裁院管辖，相关前案案号为（2025）粤03民终8888号。
+
+甲方开户行账号：6222021001122334455（经办人身份证号：110101199003077758）。`;
+}
+
+/* ============ 初始化 ============ */
+(function init() {
+  const sel = document.getElementById("manualType");
+  sel.innerHTML = Object.entries(TYPES)
+    .map(([k, t]) => `<option value="${k}">${t.label}</option>`).join("");
+  sel.value = "person";
+})();
+</script>
+</body>
+</html>

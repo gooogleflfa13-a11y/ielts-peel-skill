@@ -8,13 +8,6 @@ const TOPIC_KEYWORDS = JSON.parse(
   readFileSync(join(__dirname, 'keywords.json'), 'utf-8')
 );
 
-// Weighted keyword categories for better disambiguation
-const KEYWORD_CATEGORIES = {
-  primary: 3,      // Strong topic indicators
-  secondary: 2,    // Moderate indicators
-  tertiary: 1,     // Weak/contextual indicators
-};
-
 const TOPIC_FILE_MAP = {
   Education: 'education.json',
   Technology: 'technology.json',
@@ -27,85 +20,113 @@ const TOPIC_FILE_MAP = {
   Health: 'health.json',
 };
 
-// Pre-computed keyword weights for faster classification
-let KEYWORD_WEIGHTS = null;
-
-function buildKeywordWeights() {
-  if (KEYWORD_WEIGHTS) return KEYWORD_WEIGHTS;
-  
-  const weights = {};
-  for (const [topicId, keywords] of Object.entries(TOPIC_KEYWORDS)) {
-    for (const kw of keywords) {
-      const k = kw.toLowerCase();
-      if (!weights[k]) weights[k] = {};
-      // Primary: exact phrase with spaces (more specific)
-      if (k.includes(' ') || k.includes('-')) {
-        weights[k][topicId] = (weights[k][topicId] || 0) + KEYWORD_CATEGORIES.primary;
-      } else {
-        // Single words get lower weight to avoid false positives
-        weights[k][topicId] = (weights[k][topicId] || 0) + KEYWORD_CATEGORIES.secondary;
-      }
-    }
-  }
-  KEYWORD_WEIGHTS = weights;
-  return weights;
-}
-
-/**
- * @param {string} input
- * @returns {{ topicId: string|null, score: number, matchedKeywords: string[], allScores: Record<string, number> }}
- */
-export function classifyTopic(input) {
-  const lower = (input || '').toLowerCase();
-  const keywordWeights = buildKeywordWeights();
-  
-  let bestTopic = null;
-  let bestScore = 0;
-  let matchedKeywords = [];
-  const allScores = {};
-
-  // Score each topic using weighted keyword matching
-  for (const topicId of Object.keys(TOPIC_KEYWORDS)) {
-    let score = 0;
-    const matched = [];
-    
-    for (const [keyword, topicWeights] of Object.entries(keywordWeights)) {
-      if (topicWeights[topicId] && lower.includes(keyword)) {
-        const weight = topicWeights[topicId];
-        score += weight;
-        matched.push(keyword);
-      }
-    }
-    
-    // Boost for exact phrase matches (word boundaries)
-    for (const kw of TOPIC_KEYWORDS[topicId]) {
-      if (kw.includes(' ')) {
-        try {
-          if (new RegExp(`\\b${escapeRegex(kw)}\\b`, 'i').test(lower)) {
-            score += KEYWORD_CATEGORIES.primary;
-            if (!matched.includes(kw)) matched.push(kw);
-          }
-        } catch { /* ignore */ }
-      }
-    }
-    
-    allScores[topicId] = score;
-    if (score > bestScore) {
-      bestScore = score;
-      bestTopic = topicId;
-      matchedKeywords = matched;
-    }
-  }
-
-  // Threshold: require minimum weighted score
-  if (bestScore >= 3) {
-    return { topicId: bestTopic, score: bestScore, matchedKeywords, allScores };
-  }
-  return { topicId: null, score: 0, matchedKeywords: [], allScores };
-}
+// Pre-computed keyword weights for faster classification.
+// Multi-word / hyphenated phrases are strong indicators (weight 3);
+// single words are moderate indicators (weight 2) so that one exact
+// word-boundary match clears the classification threshold.
+const KEYWORD_WEIGHTS = {
+  phrase: 3,
+  word: 2,
+};
+const CLASSIFY_THRESHOLD = 2;
+const CONFIDENCE_DIVISOR = 4;
 
 function escapeRegex(s) {
   return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+function buildKeywordEntries() {
+  const entries = [];
+  for (const [topicId, keywords] of Object.entries(TOPIC_KEYWORDS)) {
+    for (const kw of keywords) {
+      const isPhrase = kw.includes(' ') || kw.includes('-');
+      entries.push({
+        topicId,
+        keyword: kw,
+        lower: kw.toLowerCase(),
+        weight: isPhrase ? KEYWORD_WEIGHTS.phrase : KEYWORD_WEIGHTS.word,
+        isPhrase,
+      });
+    }
+  }
+  return entries;
+}
+
+const KEYWORD_ENTRIES = buildKeywordEntries();
+
+/**
+ * Classify the input into a topic using word-boundary matching only.
+ *
+ * @param {string} input
+ * @returns {{
+ *   topicId: string|null,
+ *   label: string,
+ *   score: number,
+ *   confidence: number,
+ *   matchedKeywords: string[],
+ *   allScores: Record<string, number>,
+ *   matchedTopics: Array<{ topicId: string, score: number, confidence: number, matchedKeywords: string[] }>,
+ * }}
+ */
+export function classifyTopic(input) {
+  const lower = (input || '').toLowerCase();
+  const allScores = {};
+  const allMatched = {};
+  for (const topicId of Object.keys(TOPIC_KEYWORDS)) {
+    allScores[topicId] = 0;
+    allMatched[topicId] = [];
+  }
+
+  for (const entry of KEYWORD_ENTRIES) {
+    if (!wordBoundaryMatch(lower, entry.lower, entry.isPhrase)) continue;
+    allScores[entry.topicId] += entry.weight;
+    if (!allMatched[entry.topicId].includes(entry.keyword)) {
+      allMatched[entry.topicId].push(entry.keyword);
+    }
+  }
+
+  const matchedTopics = Object.keys(allScores)
+    .filter((topicId) => allScores[topicId] >= CLASSIFY_THRESHOLD)
+    .map((topicId) => ({
+      topicId,
+      score: allScores[topicId],
+      confidence: Math.min(allScores[topicId] / CONFIDENCE_DIVISOR, 1),
+      matchedKeywords: allMatched[topicId],
+    }))
+    .sort((a, b) => b.score - a.score);
+
+  if (matchedTopics.length === 0) {
+    return {
+      topicId: null,
+      label: 'Unknown',
+      score: 0,
+      confidence: 0,
+      matchedKeywords: [],
+      allScores,
+      matchedTopics: [],
+    };
+  }
+
+  const top = matchedTopics[0];
+  return {
+    topicId: top.topicId,
+    label: top.topicId,
+    score: top.score,
+    confidence: top.confidence,
+    matchedKeywords: top.matchedKeywords,
+    allScores,
+    matchedTopics,
+  };
+}
+
+function wordBoundaryMatch(haystack, needleLower, isPhrase) {
+  if (!needleLower) return false;
+  try {
+    const pattern = new RegExp(`\\b${escapeRegex(needleLower)}\\b`, 'i');
+    return pattern.test(haystack);
+  } catch {
+    return false;
+  }
 }
 
 /**
@@ -135,7 +156,9 @@ export function retrieveTopic(input) {
 }
 
 /**
- * Match reduction model A/B/C for matrix-style prompts
+ * Match reduction model A/B/C for matrix-style prompts.
+ * Returns an explicit Unknown marker when no trigger matches instead of
+ * forcing Model C.
  */
 export function matchReductionModel(input) {
   const models = JSON.parse(readFileSync(join(__dirname, 'models.json'), 'utf-8'));
@@ -146,14 +169,24 @@ export function matchReductionModel(input) {
   for (const [id, model] of Object.entries(models)) {
     let score = 0;
     for (const t of model.trigger || []) {
-      if (lower.includes(String(t).toLowerCase())) score += 1;
+      if (wordBoundaryMatch(lower, String(t).toLowerCase(), String(t).includes(' '))) {
+        score += 1;
+      }
     }
     if (score > bestScore) {
       bestScore = score;
       best = { id, ...model, score };
     }
   }
-  return best || { id: 'C', ...models.C, score: 0 };
+  if (best) return best;
+  return {
+    id: 'Unknown',
+    name: 'Unknown (no reduction model matched)',
+    trigger: [],
+    axes: {},
+    skeleton: '',
+    score: 0,
+  };
 }
 
 /**

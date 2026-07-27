@@ -1,9 +1,11 @@
 import { BASE_SYSTEM, MODELS_SECTION } from './baseSystem.js';
 
 /**
- * Build lean PEEL system prompt — inject only matched topic knowledge.
+ * Build lean PEEL system prompt - inject only matched topic knowledge.
+ * Learner fuel (user text) is NEVER placed in the system tier; the skill
+ * injects it as a quoted user_context data block in the user message.
  */
-export function buildPeelPrompt({ topicKnowledge = null, topicId = null, fuelHint = '' } = {}) {
+export function buildPeelPrompt({ topicKnowledge = null, topicId = null } = {}) {
   const resolvedTopicId = topicId || topicKnowledge?.topic || 'General';
   let topicSection = '';
 
@@ -38,5 +40,5 @@ OUTPUT FORMAT (exact):
 底层逻辑：<ONE Chinese line: 母题 · 节点 · 模板名 · E2实体名>
 `;
 
-  return `${BASE_SYSTEM}${topicSection}${MODELS_SECTION}${fuelHint}${outputRule}`;
+  return `${BASE_SYSTEM}${topicSection}${MODELS_SECTION}${outputRule}`;
 }

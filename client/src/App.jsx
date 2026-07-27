@@ -32,6 +32,7 @@ function peelToText(peel) {
 
 export default function App({ capabilities = DEFAULT_CAPABILITIES }) {
   const [settings, setSettings] = useState(loadSettings);
+  const [activeCapabilities, setActiveCapabilities] = useState(capabilities);
   const [command, setCommand] = useState('peel');
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
@@ -49,6 +50,22 @@ export default function App({ capabilities = DEFAULT_CAPABILITIES }) {
       })
     );
   }, [settings]);
+
+  useEffect(() => {
+    let cancelled = false;
+    fetch('/api/health')
+      .then((res) => res.json())
+      .then((data) => {
+        if (cancelled) return;
+        if (Array.isArray(data.commands) && data.commands.length > 0) {
+          setActiveCapabilities(data.commands);
+        }
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const updateSettings = useCallback((patch) => {
     setSettings((s) => ({ ...s, ...patch }));
@@ -174,7 +191,7 @@ export default function App({ capabilities = DEFAULT_CAPABILITIES }) {
             onClearWizard={handleClearWizard}
             wizardTurns={history.filter((m) => m.role === 'user').length}
             needsApiKey={command !== 'score'}
-            capabilities={capabilities}
+            capabilities={activeCapabilities}
           />
           <ResultPanel
             result={result}
