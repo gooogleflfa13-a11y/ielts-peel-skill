@@ -112,6 +112,16 @@ export function validateRequest(command, body) {
   const model = typeof body.model === 'string' ? body.model : 'gpt-4o-mini';
   const userId = typeof body.userId === 'string' ? body.userId : 'default';
 
+  // Learn-command pass-through fields. Optional; only consumed by the learn
+  // skill. Validated lightly here so the unified pipeline can carry them
+  // without re-implementing per-command dispatch validation.
+  const mode = typeof body.mode === 'string' && body.mode.trim() ? body.mode : null;
+  const studentText =
+    typeof body.studentText === 'string' ? body.studentText : '';
+  const attemptId =
+    typeof body.attemptId === 'string' && body.attemptId.trim() ? body.attemptId : null;
+  const skill = body.skill === 'speaking' ? 'speaking' : 'writing';
+
   if (errors.length > 0) {
     return invalid(errors);
   }
@@ -129,6 +139,10 @@ export function validateRequest(command, body) {
       userId,
       history,
       aiScore: false,
+      mode,
+      studentText,
+      attemptId,
+      skill,
     },
   };
 }

@@ -193,6 +193,7 @@ describe('HTTP safety', () => {
       expect.objectContaining({ memoryStore }),
       {
         enablePrivateQuestionBank: true,
+        attemptStore: expect.any(Object),
         llmRuntime: {
           baseUrl: 'https://trusted.example/v1',
           timeoutMs: 1234,
@@ -245,6 +246,7 @@ describe('HTTP safety', () => {
       expect.objectContaining({ memoryStore, signal: expect.any(AbortSignal) }),
       {
         enablePrivateQuestionBank: true,
+        attemptStore: expect.any(Object),
         llmRuntime: {
           baseUrl: 'https://api.openai.com/v1',
           timeoutMs: 30_000,

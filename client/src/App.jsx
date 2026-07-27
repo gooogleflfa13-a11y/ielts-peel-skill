@@ -3,6 +3,8 @@ import Header from './components/Header.jsx';
 import ApiKeyPanel from './components/ApiKeyPanel.jsx';
 import CommandPanel from './components/CommandPanel.jsx';
 import ResultPanel from './components/ResultPanel.jsx';
+import Onboarding, { loadProfile, saveProfile } from './components/Onboarding.jsx';
+import LearnPanel from './components/LearnPanel.jsx';
 
 const STORAGE_KEY = 'peel-hacker-settings';
 
@@ -30,9 +32,53 @@ function peelToText(peel) {
   return `[P] ${peel.P}\n[E1] ${peel.E1}\n[E2] ${peel.E2}\n[L] ${peel.L}`;
 }
 
+const CRITERION_DISCLAIMER =
+  'Formative feedback based on official IELTS criteria. Not an official assessment or band prediction.';
+
+// Mock learn result used when the backend learner module is absent (UI lane
+// runs ahead of the core lane). Produces a criterion-feedback shape so the
+// LearnPanel + CriterionFeedback components can be exercised end-to-end.
+function buildMockLearnResult(mode, input, profile) {
+  const skill = profile?.testType === 'speaking' ? 'speaking' : 'writing';
+  const writing = {
+    taskResponse: { status: 'watch', notes: 'State your position explicitly in [P].' },
+    coherence: { status: 'pass', notes: 'PEEL order maintained.' },
+    lexical: { status: 'watch', notes: 'Vary word choice beyond common adjectives.' },
+    grammar: { status: 'pass', notes: 'Sentence boundaries are clean.' },
+  };
+  const speaking = {
+    fluency: { status: 'pass', notes: 'Natural pacing indicators present.' },
+    lexical: { status: 'watch', notes: 'Add collocations to lift range.' },
+    grammar: { status: 'pass', notes: 'Tense use is accurate.' },
+    pronunciation: { status: 'watch', notes: 'Mark word stress on multi-syllable lexis.' },
+  };
+  const content =
+    mode === 'model'
+      ? '[P] Practice shapes performance under exam conditions.\n[E1] Repeated retrieval strengthens neural pathways that transfer skill to novel prompts.\n[E2] In 2024, Cambridge reported candidates who wrote three timed essays scored 0.5 higher on average.\n[L] Hence, deliberate practice is the highest-leverage variable in band improvement.'
+      : mode === 'hint'
+        ? 'Scaffolding: What is your position? Which mechanism links cause to effect? Which concrete example grounds the mechanism? How does the link return to the question?'
+        : input || '';
+  return {
+    command: 'learn',
+    mode,
+    skill,
+    content,
+    criterionFeedback: { writing, speaking, disclaimer: CRITERION_DISCLAIMER },
+    disclaimer: CRITERION_DISCLAIMER,
+    mock: true,
+  };
+}
+
 export default function App({ capabilities = DEFAULT_CAPABILITIES }) {
   const [settings, setSettings] = useState(loadSettings);
   const [activeCapabilities, setActiveCapabilities] = useState(capabilities);
+  const [profile, setProfile] = useState(() => loadProfile());
+  const [view, setView] = useState('main'); // 'main' | 'learn'
+  const [learnMode, setLearnMode] = useState('practice');
+  const [learnInput, setLearnInput] = useState('');
+  const [learnLoading, setLearnLoading] = useState(false);
+  const [learnResult, setLearnResult] = useState(null);
+  const [learnError, setLearnError] = useState('');
   const [command, setCommand] = useState('peel');
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
@@ -173,38 +219,146 @@ export default function App({ capabilities = DEFAULT_CAPABILITIES }) {
     setError('');
   };
 
+  const handleOnboardingComplete = useCallback((nextProfile) => {
+    setProfile(nextProfile);
+    // Persist profile server-side when a learner store is available. Defensive:
+    // public mode (null store) or missing route resolves to empty/no-op.
+    fetch('/api/learner/profile', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ userId: 'default', profile: nextProfile }),
+    })
+      .then((res) => (res.ok ? res.json() : null))
+      .catch(() => {});
+  }, []);
+
+  const handleLearnSubmit = async () => {
+    setLearnError('');
+    if (learnMode !== 'revise' && !learnInput.trim()) {
+      setLearnError('Write your attempt first.');
+      return;
+    }
+    setLearnLoading(true);
+    try {
+      const res = await fetch('/api/generate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          apiKey: settings.apiKey.trim() || undefined,
+          model: settings.model.trim() || DEFAULT_SETTINGS.model,
+          command: 'learn',
+          input: learnInput.trim(),
+          mode: learnMode,
+          userId: 'default',
+          profile,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
+      setLearnResult(data);
+    } catch (e) {
+      // Backend learner module is not wired yet in this lane. Surface a mock
+      // criterion-feedback result so the UI lane is testable end-to-end.
+      setLearnResult(buildMockLearnResult(learnMode, learnInput, profile));
+      setLearnError(e?.message ? `Backend unavailable: ${e.message}. Showing mock data.` : '');
+    } finally {
+      setLearnLoading(false);
+    }
+  };
+
   return (
     <div className="mx-auto min-h-screen max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
       <Header />
 
-      <div className="mt-6 space-y-4">
-        <ApiKeyPanel settings={settings} onChange={updateSettings} />
-
-        <div className="grid gap-4 lg:grid-cols-2">
-          <CommandPanel
-            command={command}
-            setCommand={setCommand}
-            input={input}
-            setInput={setInput}
-            loading={loading}
-            onGenerate={handleGenerate}
-            onClearWizard={handleClearWizard}
-            wizardTurns={history.filter((m) => m.role === 'user').length}
-            needsApiKey={command !== 'score'}
-            capabilities={activeCapabilities}
-          />
-          <ResultPanel
-            result={result}
-            loading={loading}
-            error={error}
-            onRevalidate={handleRevalidate}
-            revalidating={revalidating}
-          />
+      {/* First-visit onboarding: capture learner profile before the main UI. */}
+      {!profile ? (
+        <div className="mt-6">
+          <Onboarding onComplete={handleOnboardingComplete} />
         </div>
-      </div>
+      ) : (
+        <div className="mt-6 space-y-4">
+          <div
+            className="flex flex-wrap items-center gap-2"
+            role="tablist"
+            aria-label="Interface view"
+          >
+            <button
+              type="button"
+              role="tab"
+              aria-selected={view === 'main'}
+              onClick={() => setView('main')}
+              className={`rounded-lg border px-3 py-1.5 text-xs transition ${
+                view === 'main'
+                  ? 'border-acid-500/50 bg-acid-500/10 text-acid-400'
+                  : 'border-white/10 text-slate-400 hover:border-white/20'
+              }`}
+            >
+              Commands
+            </button>
+            <button
+              type="button"
+              role="tab"
+              aria-selected={view === 'learn'}
+              onClick={() => setView('learn')}
+              className={`rounded-lg border px-3 py-1.5 text-xs transition ${
+                view === 'learn'
+                  ? 'border-acid-500/50 bg-acid-500/10 text-acid-400'
+                  : 'border-white/10 text-slate-400 hover:border-white/20'
+              }`}
+            >
+              Learn
+            </button>
+            <span className="ml-auto text-[11px] text-slate-500">
+              {profile.testType} · band {profile.targetBand}
+            </span>
+          </div>
+
+          {view === 'learn' ? (
+            <div aria-live="polite">
+              <LearnPanel
+                mode={learnMode}
+                setMode={setLearnMode}
+                input={learnInput}
+                setInput={setLearnInput}
+                loading={learnLoading}
+                onSubmit={handleLearnSubmit}
+                result={learnResult}
+                error={learnError}
+                profile={profile}
+              />
+            </div>
+          ) : (
+            <>
+              <ApiKeyPanel settings={settings} onChange={updateSettings} />
+
+              <div className="grid gap-4 lg:grid-cols-2">
+                <CommandPanel
+                  command={command}
+                  setCommand={setCommand}
+                  input={input}
+                  setInput={setInput}
+                  loading={loading}
+                  onGenerate={handleGenerate}
+                  onClearWizard={handleClearWizard}
+                  wizardTurns={history.filter((m) => m.role === 'user').length}
+                  needsApiKey={command !== 'score'}
+                  capabilities={activeCapabilities}
+                />
+                <ResultPanel
+                  result={result}
+                  loading={loading}
+                  error={error}
+                  onRevalidate={handleRevalidate}
+                  revalidating={revalidating}
+                />
+              </div>
+            </>
+          )}
+        </div>
+      )}
 
       <footer className="mt-10 border-t border-white/5 pt-6 text-center text-xs text-slate-500">
-        IELTS PEEL Hacker v2 · orchestrator · quality gate · [P]→[E1]→[E2]→[L]
+        IELTS PEEL Hacker v2 · orchestrator · quality gate · [P]->[E1]->[E2]->[L]
       </footer>
     </div>
   );

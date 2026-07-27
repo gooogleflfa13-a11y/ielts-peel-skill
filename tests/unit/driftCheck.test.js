@@ -9,7 +9,7 @@ import { checkDrift, EXPECTED_COMMANDS } from '../../scripts/check-drift.mjs';
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = path.resolve(__dirname, '..', '..');
 
-// A consistent skill command table covering all 5 commands.
+// A consistent skill command table covering all 6 commands.
 const SKILL_MD_CONSISTENT = `---
 name: ielts-peel-skill
 ---
@@ -25,6 +25,7 @@ name: ielts-peel-skill
 | \`/wizard [topic bank?]\` | Empty or topic keywords | Questions then mother scripts |
 | \`/score [peel text]\` | User PEEL | Deterministic structure review |
 | \`/bank …\` | Internal speaking warehouse | Local-only capability |
+| \`/learn [mode]\` | Question + optional student PEEL | Learning loop: practice, hint, model, compare, revise |
 
 ## Absolute PEEL lock
 
@@ -78,7 +79,7 @@ async function writeConsistentFixture(dir, overrides = {}) {
   await writeFile(join(dir, 'skill', 'SKILL.md'), SKILL_MD_CONSISTENT, 'utf8');
   await writeFile(
     join(dir, 'Agent_System_Prompt.md'),
-    aspMd('`/wizard` `/peel` `/matrix` `/score` `/bank`'),
+    aspMd('`/wizard` `/peel` `/matrix` `/score` `/bank` `/learn`'),
     'utf8'
   );
   await writeFile(
@@ -98,8 +99,8 @@ async function writeConsistentFixture(dir, overrides = {}) {
 }
 
 describe('EXPECTED_COMMANDS', () => {
-  it('is exactly the 5 phase-1 commands', () => {
-    expect(EXPECTED_COMMANDS).toEqual(['peel', 'matrix', 'wizard', 'score', 'bank']);
+  it('is exactly the 6 phase-2 commands', () => {
+    expect(EXPECTED_COMMANDS).toEqual(['peel', 'matrix', 'wizard', 'score', 'bank', 'learn']);
   });
 });
 

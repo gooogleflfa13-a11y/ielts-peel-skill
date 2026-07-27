@@ -3,6 +3,7 @@ import { runMatrixSkill } from '../skills/matrixSkill.js';
 import { runWizardSkill } from '../skills/wizardSkill.js';
 import { runScoreSkill } from '../skills/scoreSkill.js';
 import { runBankSkill } from '../skills/bankSkill.js';
+import { runLearnSkill } from '../learner/learnSkill.js';
 import { createNullMemoryStore } from '../memory/memoryStore.js';
 import { retrieveTopic } from '../knowledge/topicRetriever.js';
 import { buildPeelPrompt } from '../prompts/peelPrompt.js';
@@ -60,6 +61,11 @@ async function dispatchCommand(request, options) {
       return runBankSkill({
         ...request,
         enablePrivateQuestionBank: options.enablePrivateQuestionBank,
+      });
+    case 'learn':
+      return runLearnSkill(request, {
+        attemptStore: options.attemptStore,
+        llmRuntime: runtime,
       });
     default:
       throw invalidRequest([{ field: 'command', message: 'Unknown command.' }]);

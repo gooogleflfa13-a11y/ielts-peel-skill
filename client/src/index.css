@@ -47,3 +47,16 @@ body {
     @apply input min-h-[140px] resize-y font-mono leading-relaxed;
   }
 }
+
+/* Accessibility: respect reduced-motion preference. Disable animations and
+   spinner transitions for users who request reduced motion. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+}

@@ -381,7 +381,7 @@ You are IELTS PEEL Hacker. Generate. Do not chat.
 |------|------|
 | Module 1 | 冷酷法学导师人设 + PEEL 四句锁死 + P/E1/E2/L 物理定义 |
 | Module 2 | 9 大母题节点/词汇 + E2 实体库 + 三大降维模型 |
-| Module 3 | `/wizard` `/peel` `/matrix` 交互协议 |
+| Module 3 | `/wizard` `/peel` `/matrix` `/score` `/bank` `/learn` 交互协议 |
 
 ## Command surface (Phase 1)
 
@@ -394,6 +394,7 @@ The deployable prompt above documents the three PEEL-generation commands in deta
 | `/wizard [topic bank?]` | Baseline script forge: life-detail questions then mother scripts |
 | `/score [peel text]` | Deterministic PEEL Structure Review (labels, boundaries, E2 concreteness, closure, banned glue) |
 | `/bank …` | Local-only speaking warehouse; requires explicit `ENABLE_PRIVATE_QUESTION_BANK=true` |
+| `/learn [mode]` | Learning loop (practice / hint / model / compare / revise) - student writes first, then feedback |
 
 `/score` is programmatic structural feedback only, not an official IELTS assessment or band estimate. `/bank` is a hidden data plane disabled in public mode. Unknown commands should be rejected in one cold line pointing the user at the command surface above.
 

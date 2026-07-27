@@ -8,6 +8,7 @@ import { MAX_INPUT_CHARS } from '../utils/constants.js';
  * Each definition declares:
  *  - name: lowercase command id
  *  - description: human readable purpose
+ *  - skill: IELTS skill surface - 'writing' | 'speaking' | 'both'
  *  - inputSchema: declarative shape of the accepted request
  *  - outputContract: declarative shape of the produced result
  *  - requiresApiKey(input): whether an upstream LLM key is required
@@ -26,6 +27,7 @@ function bankRequiresApiKey(input) {
 
 const PEEL = {
   name: 'peel',
+  skill: 'both',
   description:
     'Generate one locked [P]-[E1]-[E2]-[L] body paragraph for Writing Task 2 / Speaking Part 3.',
   inputSchema: {
@@ -54,6 +56,7 @@ const PEEL = {
 
 const MATRIX = {
   name: 'matrix',
+  skill: 'writing',
   description:
     'Generate a horizontal-kill matrix: one reduction model, one baseline PEEL, three isomorphic question PEELs, and a logic note.',
   inputSchema: {
@@ -83,6 +86,7 @@ const MATRIX = {
 
 const WIZARD = {
   name: 'wizard',
+  skill: 'writing',
   description:
     'Two-phase personalization: first turn asks 3-4 life-detail questions, later turns emit 3-4 personal PEEL scripts plus a routing table.',
   inputSchema: {
@@ -111,6 +115,7 @@ const WIZARD = {
 
 const SCORE = {
   name: 'score',
+  skill: 'both',
   description:
     'Deterministic PEEL Structure Review of a user-pasted paragraph. No LLM call, no generation, no repair.',
   inputSchema: {
@@ -132,6 +137,7 @@ const SCORE = {
 
 const BANK = {
   name: 'bank',
+  skill: 'speaking',
   description:
     'Private speaking question warehouse: draw, search, link-map, stats, and /bank peel generation. The peel subcommand delegates to the peel skill.',
   inputSchema: {
@@ -152,7 +158,32 @@ const BANK = {
   repairable: true,
 };
 
-export const COMMAND_REGISTRY = [PEEL, MATRIX, WIZARD, SCORE, BANK];
+const LEARN = {
+  name: 'learn',
+  skill: 'both',
+  description:
+    'Learning loop with five modes: practice (student writes first, then feedback), hint (scaffolding questions only), model (generate a tagged model PEEL), compare (student + AI side by side), revise (re-score a prior attempt).',
+  inputSchema: {
+    command: 'learn',
+    required: ['input'],
+    optional: ['history', 'apiKey', 'model', 'userId', 'mode', 'studentText', 'attemptId', 'skill'],
+    maxInputChars: MAX_INPUT_CHARS,
+    historyMaxTurns: 12,
+    subcommands: ['practice', 'hint', 'model', 'compare', 'revise'],
+  },
+  outputContract: {
+    status: 'success | quality_failed',
+    streamable: false,
+    fields: ['content', 'parsed', 'feedback', 'topic', 'retries'],
+  },
+  // apiKey is validated per-mode inside the skill (model/compare need it;
+  // practice/hint/revise are deterministic). The app gate does not require it.
+  requiresApiKey: () => false,
+  requiresBank: false,
+  repairable: false,
+};
+
+export const COMMAND_REGISTRY = [PEEL, MATRIX, WIZARD, SCORE, BANK, LEARN];
 
 export const COMMAND_NAMES = COMMAND_REGISTRY.map((command) => command.name);
 

@@ -116,3 +116,58 @@ export function getRelevantFuel(userId, topicId, memoryDir = MEMORY_DIR) {
     .slice(-10)
     .reverse();
 }
+
+export function getProfile(userId, memoryDir = MEMORY_DIR) {
+  const mem = getUserMemory(userId, memoryDir);
+  return mem.profile || null;
+}
+
+export function saveProfile(userId, profile, memoryDir = MEMORY_DIR) {
+  const mem = getUserMemory(userId, memoryDir);
+  mem.profile = profile;
+  saveUserMemory(userId, mem, memoryDir);
+}
+
+export function getAttempt(userId, attemptId, memoryDir = MEMORY_DIR) {
+  const mem = getUserMemory(userId, memoryDir);
+  return mem.attempts?.[attemptId] || null;
+}
+
+export function saveAttempt(userId, attempt, memoryDir = MEMORY_DIR) {
+  const mem = getUserMemory(userId, memoryDir);
+  if (!mem.attempts) mem.attempts = {};
+  const existing = mem.attempts[attempt.id];
+  const merged = mergeAttemptRevisions(existing, attempt);
+  mem.attempts[attempt.id] = merged;
+  saveUserMemory(userId, mem, memoryDir);
+}
+
+export function listAttempts(userId, memoryDir = MEMORY_DIR) {
+  const mem = getUserMemory(userId, memoryDir);
+  return Object.values(mem.attempts || {});
+}
+
+export function deleteAllAttempts(userId, memoryDir = MEMORY_DIR) {
+  const mem = getUserMemory(userId, memoryDir);
+  mem.attempts = {};
+  saveUserMemory(userId, mem, memoryDir);
+}
+
+export function exportAllAttempts(userId, memoryDir = MEMORY_DIR) {
+  const mem = getUserMemory(userId, memoryDir);
+  return Object.values(mem.attempts || {}).map((attempt) => ({
+    ...attempt,
+    revisions: attempt.revisions.map((rev) => ({ ...rev })),
+  }));
+}
+
+function mergeAttemptRevisions(existing, incoming) {
+  if (!existing) return incoming;
+  const existingCount = existing.revisions.length;
+  const newRevisions = incoming.revisions.slice(existingCount);
+  return {
+    ...incoming,
+    createdAt: existing.createdAt,
+    revisions: [...existing.revisions, ...newRevisions],
+  };
+}

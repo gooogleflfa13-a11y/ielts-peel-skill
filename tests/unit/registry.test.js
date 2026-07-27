@@ -11,6 +11,7 @@ import {
 const REQUIRED_FIELDS = [
   'name',
   'description',
+  'skill',
   'inputSchema',
   'outputContract',
   'requiresApiKey',
@@ -19,15 +20,15 @@ const REQUIRED_FIELDS = [
 ];
 
 describe('Command Registry', () => {
-  it('exports exactly the five skill commands', () => {
-    expect(COMMAND_NAMES).toEqual(['peel', 'matrix', 'wizard', 'score', 'bank']);
-    expect(COMMAND_REGISTRY).toHaveLength(5);
+  it('exports exactly the six skill commands', () => {
+    expect(COMMAND_NAMES).toEqual(['peel', 'matrix', 'wizard', 'score', 'bank', 'learn']);
+    expect(COMMAND_REGISTRY).toHaveLength(6);
     expect(COMMAND_REGISTRY.map((c) => c.name)).toEqual(
       COMMAND_NAMES
     );
   });
 
-  it('every command exposes all seven contract fields', () => {
+  it('every command exposes all eight contract fields', () => {
     for (const command of COMMAND_REGISTRY) {
       for (const field of REQUIRED_FIELDS) {
         expect(command, `${command.name} missing ${field}`).toHaveProperty(field);
@@ -39,6 +40,13 @@ describe('Command Registry', () => {
       expect(command.inputSchema).not.toBeNull();
       expect(typeof command.outputContract).toBe('object');
       expect(command.outputContract).not.toBeNull();
+    }
+  });
+
+  it('every command declares a valid skill surface', () => {
+    const valid = new Set(['writing', 'speaking', 'both']);
+    for (const command of COMMAND_REGISTRY) {
+      expect(valid.has(command.skill), `${command.name} skill=${command.skill}`).toBe(true);
     }
   });
 

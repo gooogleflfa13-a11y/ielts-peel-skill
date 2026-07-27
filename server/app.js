@@ -12,6 +12,9 @@ import {
   createLocalFileMemoryStore,
   createNullMemoryStore,
 } from './memory/memoryStore.js';
+import { createLearnerRouter } from './api/learnerRoutes.js';
+import { createLocalAttemptStore, createNullAttemptStore } from './learner/attempts.js';
+import { createLocalProfileStore, createNullProfileStore } from './learner/profile.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -49,6 +52,13 @@ function validateBody(body, forcedCommand) {
     history: Array.isArray(requestBody.history) ? requestBody.history : [],
     userId: requestBody.userId || 'default',
     aiScore: false,
+    mode: typeof requestBody.mode === 'string' && requestBody.mode.trim() ? requestBody.mode : null,
+    studentText: typeof requestBody.studentText === 'string' ? requestBody.studentText : '',
+    attemptId:
+      typeof requestBody.attemptId === 'string' && requestBody.attemptId.trim()
+        ? requestBody.attemptId
+        : null,
+    skill: requestBody.skill === 'speaking' ? 'speaking' : 'writing',
   };
 }
 
@@ -67,6 +77,8 @@ export function createApp({
   runCommandStream,
   getMetrics,
   memoryStore,
+  attemptStore,
+  profileStore,
   serveClient = process.env.NODE_ENV === 'production',
 } = {}) {
   if (!config || !runCommand || !runCommandStream || !getMetrics) {
@@ -74,15 +86,19 @@ export function createApp({
   }
 
   const app = express();
+  const useLocalStores = config.appMode === 'local' || config.enableLocalMemory;
   const selectedMemoryStore =
     memoryStore ||
-    (config.enableLocalMemory
-      ? createLocalFileMemoryStore()
-      : createNullMemoryStore());
+    (config.enableLocalMemory ? createLocalFileMemoryStore() : createNullMemoryStore());
+  const selectedAttemptStore =
+    attemptStore || (useLocalStores ? createLocalAttemptStore() : createNullAttemptStore());
+  const selectedProfileStore =
+    profileStore || (useLocalStores ? createLocalProfileStore() : createNullProfileStore());
   const enablePrivateQuestionBank =
     config.appMode === 'local' && config.enablePrivateQuestionBank;
   const executionOptions = {
     enablePrivateQuestionBank,
+    attemptStore: selectedAttemptStore,
     llmRuntime: {
       baseUrl: config.providerBaseUrl,
       timeoutMs: config.upstreamTimeoutMs,
@@ -107,7 +123,7 @@ export function createApp({
         }
         callback(publicError('CORS_FORBIDDEN'));
       },
-      methods: ['GET', 'POST', 'OPTIONS'],
+      methods: ['GET', 'POST', 'DELETE', 'OPTIONS'],
     })
   );
   app.use(express.json({ limit: '256kb' }));
@@ -228,6 +244,15 @@ export function createApp({
       next(error);
     }
   });
+
+  app.use(
+    '/api/learner',
+    createLearnerRouter({
+      memoryStore: selectedMemoryStore,
+      attemptStore: selectedAttemptStore,
+      profileStore: selectedProfileStore,
+    })
+  );
 
   if (serveClient) {
     const distPath = path.join(__dirname, '../client/dist');
