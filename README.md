@@ -408,7 +408,7 @@ ielts-peel-skill/
 ├── docs/
 │   ├── QUALITY_AUDIT_2026-07-26.md   # 质量审计报告（EN）
 │   ├── QUALITY_AUDIT_2026-07-26.zh-CN.md  # 质量审计报告（CN）
-│   └── EVOLUTION_BLUEPRINT.md        # 历史架构蓝图（已标记为历史）
+│   └── EVOLUTION_BLUEPRINT.md        # Historical architecture blueprint (obsolete product claims)
 └── README.md
 ```
 
