@@ -213,6 +213,19 @@ async function finalizeResult({ rawResult, request, warnings, started }) {
       latencyMs,
       bank: rawResult.bank || null,
       sanitizeWarnings: warnings.length ? warnings : undefined,
+      ...(request.command === 'learn'
+        ? {
+            criterionFeedback: rawResult.criterionFeedback ?? null,
+            mode: rawResult.mode ?? null,
+            comparison: rawResult.comparison ?? null,
+            revisionDiff: rawResult.revisionDiff ?? null,
+            resolvedIssues: rawResult.resolvedIssues ?? null,
+            unresolvedIssues: rawResult.unresolvedIssues ?? null,
+            introducedIssues: rawResult.introducedIssues ?? null,
+            revisions: rawResult.revisions ?? null,
+            isModel: rawResult.isModel ?? null,
+          }
+        : {}),
     };
   }
 

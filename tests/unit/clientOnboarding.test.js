@@ -39,12 +39,12 @@ describe('Onboarding component', () => {
     delete globalThis.sessionStorage;
   });
 
-  it('renders all five profile fields with associated labels (for/id pairs)', () => {
+  it('renders all six profile fields with associated labels (for/id pairs)', () => {
     const html = renderToStaticMarkup(
       React.createElement(Onboarding, { onComplete: () => {} })
     );
 
-    for (const field of ['testType', 'targetBand', 'currentLevel', 'examDate', 'language']) {
+    for (const field of ['testType', 'skill', 'targetBand', 'currentLevel', 'examDate', 'language']) {
       const id = `onboarding-${field}`;
       expect(html).toContain(`for="${id}"`);
       expect(html).toContain(`id="${id}"`);

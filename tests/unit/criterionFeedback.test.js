@@ -94,7 +94,7 @@ describe('Criterion Feedback', () => {
       for (const code of ['TR', 'CC', 'LR', 'GRA']) {
         const criterion = result.criteria[code];
         expect(typeof criterion.status).toBe('string');
-        expect(['pass', 'watch', 'fail']).toContain(criterion.status);
+        expect(['pass', 'watch', 'fail', 'not_assessed']).toContain(criterion.status);
         expect(typeof criterion.notes).toBe('string');
         expect(criterion.notes.length).toBeGreaterThan(0);
       }
@@ -165,14 +165,24 @@ describe('Criterion Feedback', () => {
       expect(codes).toEqual(['FC', 'GRA', 'LR', 'PR']);
     });
 
-    it('marks PR as watch because pronunciation cannot be assessed from text', () => {
+    it('marks PR as not_assessed because pronunciation cannot be assessed from text', () => {
       const result = buildCriterionFeedback({
         skill: 'speaking',
         parseResult: VALID_PEEL,
         validation: CLEAN_VALIDATION,
       });
-      expect(result.criteria.PR.status).toBe('watch');
+      expect(result.criteria.PR.status).toBe('not_assessed');
       expect(result.criteria.PR.notes).toMatch(/pronunciation|cannot|text|audio/i);
+    });
+
+    it('labels the result as a criterion-aligned structural proxy', () => {
+      const result = buildCriterionFeedback({
+        skill: 'speaking',
+        parseResult: VALID_PEEL,
+        validation: CLEAN_VALIDATION,
+      });
+      expect(result.scope).toBe('criterion_aligned_structural_proxy');
+      expect(result.disclaimer).toMatch(/proxy|structural/i);
     });
 
     it('marks FC as fail when coherence checks fail', () => {

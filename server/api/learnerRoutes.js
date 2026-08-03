@@ -4,6 +4,34 @@ import { createNullProfileStore } from '../learner/profile.js';
 import { createNullMemoryStore } from '../memory/memoryStore.js';
 import { log } from '../utils/logger.js';
 
+const VALID_TEST_TYPES = ['academic', 'general'];
+const VALID_LANGUAGES = ['en', 'zh'];
+
+function isLooseDate(value) {
+  if (value === null || value === undefined || value === '') return true;
+  return typeof value === 'string' && !Number.isNaN(new Date(value).getTime());
+}
+
+function validateProfilePayload(profile) {
+  const errors = [];
+  if (!VALID_TEST_TYPES.includes(profile?.testType)) {
+    errors.push('testType must be "academic" or "general"');
+  }
+  if (!Number.isInteger(profile?.targetBand) || profile.targetBand < 5 || profile.targetBand > 9) {
+    errors.push('targetBand must be an integer from 5 to 9');
+  }
+  if (!Number.isInteger(profile?.currentLevel) || profile.currentLevel < 5 || profile.currentLevel > 9) {
+    errors.push('currentLevel must be an integer from 5 to 9');
+  }
+  if (!isLooseDate(profile?.examDate)) {
+    errors.push('examDate must be a valid date string or null');
+  }
+  if (profile?.language !== undefined && !VALID_LANGUAGES.includes(profile.language)) {
+    errors.push('language must be "en" or "zh"');
+  }
+  return errors;
+}
+
 /**
  * Phase 2 privacy API - learner data export and deletion.
  *
@@ -31,6 +59,37 @@ export function createLearnerRouter({
     const id = req.get('x-learner-id');
     return typeof id === 'string' && id.trim() ? id.trim().slice(0, 64) : 'default';
   }
+
+  router.post('/profile', async (req, res, next) => {
+    try {
+      const userId = learnerId(req);
+      const profile = req.body?.profile;
+      if (!profile || typeof profile !== 'object' || Array.isArray(profile)) {
+        return res
+          .status(400)
+          .json({ code: 'INVALID_REQUEST', error: 'A profile object is required.' });
+      }
+      const errors = validateProfilePayload(profile);
+      if (errors.length > 0) {
+        return res.status(400).json({ code: 'INVALID_REQUEST', errors });
+      }
+      profileStore.saveProfile({ userId }, profile);
+      log('INFO', 'learner.profile.saved', { userId });
+      res.json({ profile });
+    } catch (error) {
+      next(error);
+    }
+  });
+
+  router.get('/profile', async (req, res, next) => {
+    try {
+      const userId = learnerId(req);
+      const profile = profileStore.getProfile({ userId });
+      res.json({ profile });
+    } catch (error) {
+      next(error);
+    }
+  });
 
   router.get('/export', async (req, res, next) => {
     try {

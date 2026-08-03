@@ -1,8 +1,14 @@
 {
   "name": "peel-hacker-server",
-  "version": "1.0.0",
+  "version": "2.0.0",
   "private": true,
+  "description": "Local Express runtime for the IELTS PEEL Hacker skill",
+  "license": "MIT",
   "type": "module",
+  "engines": {
+    "node": ">=20 <25",
+    "npm": ">=10"
+  },
   "scripts": {
     "dev": "node --watch index.js",
     "start": "NODE_ENV=production node index.js"

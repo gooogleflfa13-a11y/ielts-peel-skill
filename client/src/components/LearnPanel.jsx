@@ -11,8 +11,11 @@ const MODES = [
 export default function LearnPanel({
   mode,
   setMode,
-  input,
-  setInput,
+  question,
+  setQuestion,
+  studentText,
+  setStudentText,
+  attemptId,
   loading,
   onSubmit,
   result,
@@ -20,8 +23,15 @@ export default function LearnPanel({
   profile,
 }) {
   const activeMode = MODES.find((m) => m.id === mode) || MODES[0];
-  const canSubmit = !loading && (mode === 'revise' || String(input).trim().length > 0);
-  const skill = result?.skill || 'writing';
+  const hasInput =
+    String(question || '').trim().length > 0 ||
+    String(studentText || '').trim().length > 0;
+  const canSubmit =
+    !loading &&
+    (mode === 'revise'
+      ? hasInput && String(attemptId || '').trim().length > 0
+      : hasInput);
+  const skill = result?.skill || profile?.skill || 'writing';
 
   const handleKeyDown = (e) => {
     if (e.key === 'Enter' && !e.shiftKey) {
@@ -70,14 +80,26 @@ export default function LearnPanel({
 
       <p className="mt-2 text-xs leading-relaxed text-slate-400">{activeMode.hint}</p>
 
-      <label htmlFor="learn-input" className="label mb-1.5 mt-4">
+      <label htmlFor="learn-question" className="label mb-1.5 mt-4">
+        Question
+      </label>
+      <input
+        id="learn-question"
+        className="input"
+        type="text"
+        value={question || ''}
+        onChange={(e) => setQuestion(e.target.value)}
+        placeholder="Paste the IELTS prompt, or leave empty to reuse the prior attempt"
+      />
+
+      <label htmlFor="learn-studentText" className="label mb-1.5 mt-3">
         Your attempt
       </label>
       <textarea
-        id="learn-input"
+        id="learn-studentText"
         className="textarea flex-1"
-        value={input}
-        onChange={(e) => setInput(e.target.value)}
+        value={studentText || ''}
+        onChange={(e) => setStudentText(e.target.value)}
         placeholder="Write your PEEL paragraph, or paste a topic to begin..."
         onKeyDown={handleKeyDown}
       />
@@ -106,7 +128,10 @@ export default function LearnPanel({
         <button
           type="button"
           className="btn-ghost"
-          onClick={() => setInput('')}
+          onClick={() => {
+            setQuestion('');
+            setStudentText('');
+          }}
           disabled={loading}
         >
           Clear

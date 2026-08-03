@@ -1,5 +1,7 @@
 export const CRITERION_FEEDBACK_DISCLAIMER =
-  'Criterion feedback reflects PEEL structural checks only. It is not an official IELTS assessment, band estimate, or examiner score.';
+  'Criterion-aligned proxy feedback reflects PEEL structural checks only. It does not fully assess IELTS criteria and is not an official assessment, band estimate, or examiner score.';
+
+export const CRITERION_FEEDBACK_SCOPE = 'criterion_aligned_structural_proxy';
 
 const UNPARSEABLE_NOTE =
   'The input could not be parsed as a complete labeled PEEL unit. Address the structure before criterion-level feedback is meaningful.';
@@ -111,7 +113,7 @@ function buildCriterion(code, mappedChecks, issues, checks) {
   );
 
   if (!hasMappedChecks) {
-    return { status: 'watch', notes: PR_NOTE };
+    return { status: 'not_assessed', notes: PR_NOTE };
   }
 
   if (anyFailed) {
@@ -135,7 +137,11 @@ export function buildCriterionFeedback({ skill = 'writing', parseResult, validat
         criteria[code] = { status: 'fail', notes: UNPARSEABLE_NOTE };
       }
     }
-    return { criteria, disclaimer: CRITERION_FEEDBACK_DISCLAIMER };
+    return {
+      scope: CRITERION_FEEDBACK_SCOPE,
+      criteria,
+      disclaimer: CRITERION_FEEDBACK_DISCLAIMER,
+    };
   }
 
   const criteria = {};
@@ -143,5 +149,9 @@ export function buildCriterionFeedback({ skill = 'writing', parseResult, validat
     criteria[code] = buildCriterion(code, criteriaMap[code], issues, checks);
   }
 
-  return { criteria, disclaimer: CRITERION_FEEDBACK_DISCLAIMER };
+  return {
+    scope: CRITERION_FEEDBACK_SCOPE,
+    criteria,
+    disclaimer: CRITERION_FEEDBACK_DISCLAIMER,
+  };
 }

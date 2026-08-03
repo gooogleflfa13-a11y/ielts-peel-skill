@@ -63,6 +63,8 @@ describe('practice mode', () => {
     expect(result.status).toBe('success');
     expect(result.content).toBe(weakPeel);
     expect(result.feedback).toBeTruthy();
+    expect(result.criterionFeedback.scope).toBe('criterion_aligned_structural_proxy');
+    expect(result.criterionFeedback.criteria).toHaveProperty('TR');
     expect(result.disclaimer).toEqual(expect.any(String));
     // An attempt was recorded with a stable id.
     expect(result.attemptId).toEqual(expect.any(String));
@@ -117,7 +119,7 @@ describe('model mode', () => {
 });
 
 describe('compare mode', () => {
-  it('shows the student PEEL and the AI PEEL side by side', async () => {
+  it('returns a structured layer comparison between the student and model PEEL', async () => {
     const runtime = mockLlmRuntime(validPeel);
     const store = createLocalAttemptStore();
     const result = await runLearnSkill(
@@ -138,6 +140,12 @@ describe('compare mode', () => {
     expect(result.content).toContain('MODEL');
     // Student receives feedback.
     expect(result.feedback).toBeTruthy();
+    expect(result.comparison.layers.P).toEqual(expect.objectContaining({
+      student: expect.any(String),
+      model: expect.any(String),
+      changed: expect.any(Boolean),
+    }));
+    expect(result.comparison.studentIssues).toEqual(expect.any(Array));
     // Attempt recorded.
     expect(result.attemptId).toEqual(expect.any(String));
   });
@@ -153,7 +161,7 @@ describe('compare mode', () => {
 });
 
 describe('revise mode', () => {
-  it('loads a prior attempt and re-scores it', async () => {
+  it('accepts a new draft, scores it, and records resolved/unresolved issues', async () => {
     const store = createLocalAttemptStore();
     // Seed a prior attempt by running practice first.
     const practice = await runLearnSkill(
@@ -163,17 +171,40 @@ describe('revise mode', () => {
     const priorId = practice.attemptId;
 
     const result = await runLearnSkill(
-      { ...baseRequest, mode: 'revise', attemptId: priorId },
+      { ...baseRequest, mode: 'revise', attemptId: priorId, studentText: validPeel },
       { attemptStore: store }
     );
 
     expect(result.mode).toBe('revise');
     expect(result.status).toBe('success');
-    expect(result.content).toBe(weakPeel);
+    expect(result.content).toBe(validPeel);
     expect(result.feedback).toBeTruthy();
+    expect(result.revisionDiff.layers.P).toEqual(expect.objectContaining({
+      before: 'Education is good.',
+      after: 'Physical schooling develops social competence.',
+      changed: true,
+    }));
+    expect(result.resolvedIssues).toEqual(expect.any(Array));
+    expect(result.unresolvedIssues).toEqual(expect.any(Array));
     // Re-scoring appends a revision to the prior attempt (append-only history).
     const stored = store.loadAttempt({ userId: 'learner-1' }, priorId);
     expect(stored.revisions.length).toBeGreaterThanOrEqual(1);
+    expect(stored.revisions.at(-1).studentText).toBe(validPeel);
+    expect(stored.revisions.at(-1).diff).toEqual(expect.objectContaining({ layers: expect.any(Object) }));
+  });
+
+  it('rejects revise when the learner has not submitted a new draft', async () => {
+    const store = createLocalAttemptStore();
+    const practice = await runLearnSkill(
+      { ...baseRequest, mode: 'practice', studentText: weakPeel },
+      { attemptStore: store }
+    );
+    await expect(
+      runLearnSkill(
+        { ...baseRequest, mode: 'revise', attemptId: practice.attemptId, studentText: '' },
+        { attemptStore: store }
+      )
+    ).rejects.toMatchObject({ code: 'INVALID_REQUEST' });
   });
 
   it('rejects when the prior attempt id is unknown', async () => {
@@ -224,6 +255,8 @@ describe('learn command wired through the unified pipeline', () => {
     expect(execution.result.command).toBe('learn');
     expect(execution.result.content).toBe(weakPeel);
     expect(execution.result.feedback).toBeTruthy();
+    expect(execution.result.criterionFeedback.criteria).toHaveProperty('TR');
+    expect(execution.result.mode).toBe('practice');
     expect(execution.result.retries).toBe(0);
   });
 

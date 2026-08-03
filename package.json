@@ -1,15 +1,32 @@
 {
   "name": "ielts-peel-skill",
-  "version": "1.0.0",
+  "version": "2.0.0",
   "private": true,
   "description": "IELTS PEEL Hacker — Skill-first PEEL logic engine for Writing Task 2 / Speaking Part 3 (optional local playground)",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/gooogleflfa13-a11y/ielts-peel-skill.git"
+  },
+  "bugs": {
+    "url": "https://github.com/gooogleflfa13-a11y/ielts-peel-skill/issues"
+  },
+  "homepage": "https://github.com/gooogleflfa13-a11y/ielts-peel-skill#readme",
+  "engines": {
+    "node": ">=20 <25",
+    "npm": ">=10"
+  },
   "scripts": {
     "build:prompt": "node scripts/build-prompt.mjs",
     "sync:skill": "node scripts/sync-skill.mjs",
+    "sync:skill:repo-mirror": "node scripts/sync-skill.mjs --repo-mirror",
+    "install:skill:grok": "node scripts/sync-skill.mjs --install grok",
+    "install:skill:agents": "node scripts/sync-skill.mjs --install agents",
     "dev": "concurrently -k -n server,client -c blue,green \"node --watch server/index.js\" \"node client/node_modules/vite/bin/vite.js --config client/vite.config.js\"",
     "dev:server": "node --watch server/index.js",
     "dev:client": "node client/node_modules/vite/bin/vite.js --config client/vite.config.js",
-    "install:all": "npm install && npm install --prefix server && npm install --prefix client && npm run build:prompt && npm run sync:skill",
+    "bootstrap": "npm ci && npm ci --prefix server && npm ci --prefix client",
+    "install:all": "npm run bootstrap",
     "build": "npm run build:prompt && npm run sync:skill && node client/node_modules/vite/bin/vite.js build --config client/vite.config.js",
     "start": "NODE_ENV=production node server/index.js",
     "test": "vitest run",

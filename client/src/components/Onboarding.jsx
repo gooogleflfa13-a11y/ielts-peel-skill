@@ -25,6 +25,7 @@ const BAND_OPTIONS = [5, 6, 7, 8, 9];
 
 const DEFAULT_FORM = {
   testType: 'academic',
+  skill: 'writing',
   targetBand: 7,
   currentLevel: 6,
   examDate: '',
@@ -49,13 +50,14 @@ export default function Onboarding({ onComplete, initialProfile }) {
       setError('Current level must be an integer between 5 and 9.');
       return;
     }
-    if (!form.testType || !form.language) {
-      setError('Please select a test type and interface language.');
+    if (!form.testType || !form.skill || !form.language) {
+      setError('Please select a test type, skill surface, and interface language.');
       return;
     }
     setError('');
     const profile = {
       testType: form.testType,
+      skill: form.skill,
       targetBand,
       currentLevel,
       examDate: form.examDate || null,
@@ -91,6 +93,21 @@ export default function Onboarding({ onComplete, initialProfile }) {
           >
             <option value="academic">Academic</option>
             <option value="general">General Training</option>
+          </select>
+        </div>
+
+        <div>
+          <label htmlFor="onboarding-skill" className="label mb-1.5 block">
+            Skill surface
+          </label>
+          <select
+            id="onboarding-skill"
+            className="input"
+            value={form.skill}
+            onChange={(e) => update('skill', e.target.value)}
+          >
+            <option value="writing">Writing Task 2</option>
+            <option value="speaking">Speaking Part 3</option>
           </select>
         </div>
 

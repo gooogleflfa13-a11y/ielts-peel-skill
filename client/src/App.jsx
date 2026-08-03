@@ -32,50 +32,15 @@ function peelToText(peel) {
   return `[P] ${peel.P}\n[E1] ${peel.E1}\n[E2] ${peel.E2}\n[L] ${peel.L}`;
 }
 
-const CRITERION_DISCLAIMER =
-  'Formative feedback based on official IELTS criteria. Not an official assessment or band prediction.';
-
-// Mock learn result used when the backend learner module is absent (UI lane
-// runs ahead of the core lane). Produces a criterion-feedback shape so the
-// LearnPanel + CriterionFeedback components can be exercised end-to-end.
-function buildMockLearnResult(mode, input, profile) {
-  const skill = profile?.testType === 'speaking' ? 'speaking' : 'writing';
-  const writing = {
-    taskResponse: { status: 'watch', notes: 'State your position explicitly in [P].' },
-    coherence: { status: 'pass', notes: 'PEEL order maintained.' },
-    lexical: { status: 'watch', notes: 'Vary word choice beyond common adjectives.' },
-    grammar: { status: 'pass', notes: 'Sentence boundaries are clean.' },
-  };
-  const speaking = {
-    fluency: { status: 'pass', notes: 'Natural pacing indicators present.' },
-    lexical: { status: 'watch', notes: 'Add collocations to lift range.' },
-    grammar: { status: 'pass', notes: 'Tense use is accurate.' },
-    pronunciation: { status: 'watch', notes: 'Mark word stress on multi-syllable lexis.' },
-  };
-  const content =
-    mode === 'model'
-      ? '[P] Practice shapes performance under exam conditions.\n[E1] Repeated retrieval strengthens neural pathways that transfer skill to novel prompts.\n[E2] In 2024, Cambridge reported candidates who wrote three timed essays scored 0.5 higher on average.\n[L] Hence, deliberate practice is the highest-leverage variable in band improvement.'
-      : mode === 'hint'
-        ? 'Scaffolding: What is your position? Which mechanism links cause to effect? Which concrete example grounds the mechanism? How does the link return to the question?'
-        : input || '';
-  return {
-    command: 'learn',
-    mode,
-    skill,
-    content,
-    criterionFeedback: { writing, speaking, disclaimer: CRITERION_DISCLAIMER },
-    disclaimer: CRITERION_DISCLAIMER,
-    mock: true,
-  };
-}
-
 export default function App({ capabilities = DEFAULT_CAPABILITIES }) {
   const [settings, setSettings] = useState(loadSettings);
   const [activeCapabilities, setActiveCapabilities] = useState(capabilities);
   const [profile, setProfile] = useState(() => loadProfile());
   const [view, setView] = useState('main'); // 'main' | 'learn'
   const [learnMode, setLearnMode] = useState('practice');
-  const [learnInput, setLearnInput] = useState('');
+  const [learnQuestion, setLearnQuestion] = useState('');
+  const [learnStudentText, setLearnStudentText] = useState('');
+  const [learnAttemptId, setLearnAttemptId] = useState('');
   const [learnLoading, setLearnLoading] = useState(false);
   const [learnResult, setLearnResult] = useState(null);
   const [learnError, setLearnError] = useState('');
@@ -234,8 +199,15 @@ export default function App({ capabilities = DEFAULT_CAPABILITIES }) {
 
   const handleLearnSubmit = async () => {
     setLearnError('');
-    if (learnMode !== 'revise' && !learnInput.trim()) {
-      setLearnError('Write your attempt first.');
+    const hasInput =
+      String(learnQuestion).trim().length > 0 ||
+      String(learnStudentText).trim().length > 0;
+    if (!hasInput || (learnMode === 'revise' && !String(learnAttemptId).trim())) {
+      setLearnError(
+        learnMode === 'revise'
+          ? 'Load a prior attempt before revising, then edit your draft.'
+          : 'Write your attempt (or a question) first.'
+      );
       return;
     }
     setLearnLoading(true);
@@ -247,20 +219,20 @@ export default function App({ capabilities = DEFAULT_CAPABILITIES }) {
           apiKey: settings.apiKey.trim() || undefined,
           model: settings.model.trim() || DEFAULT_SETTINGS.model,
           command: 'learn',
-          input: learnInput.trim(),
+          input: learnQuestion.trim(),
           mode: learnMode,
+          studentText: learnStudentText.trim(),
+          attemptId: learnAttemptId.trim() || undefined,
+          skill: profile?.skill || 'writing',
           userId: 'default',
-          profile,
         }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
       setLearnResult(data);
+      if (data.attemptId) setLearnAttemptId(data.attemptId);
     } catch (e) {
-      // Backend learner module is not wired yet in this lane. Surface a mock
-      // criterion-feedback result so the UI lane is testable end-to-end.
-      setLearnResult(buildMockLearnResult(learnMode, learnInput, profile));
-      setLearnError(e?.message ? `Backend unavailable: ${e.message}. Showing mock data.` : '');
+      setLearnError(e?.message || 'Learn request failed.');
     } finally {
       setLearnLoading(false);
     }
@@ -318,8 +290,11 @@ export default function App({ capabilities = DEFAULT_CAPABILITIES }) {
               <LearnPanel
                 mode={learnMode}
                 setMode={setLearnMode}
-                input={learnInput}
-                setInput={setLearnInput}
+                question={learnQuestion}
+                setQuestion={setLearnQuestion}
+                studentText={learnStudentText}
+                setStudentText={setLearnStudentText}
+                attemptId={learnAttemptId}
                 loading={learnLoading}
                 onSubmit={handleLearnSubmit}
                 result={learnResult}

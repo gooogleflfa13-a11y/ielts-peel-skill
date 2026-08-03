@@ -1,4 +1,4 @@
-export const API_VERSION = '2.0.0-evolution';
+export const API_VERSION = '2.0.0';
 
 export const COMMANDS = ['peel', 'matrix', 'wizard', 'score', 'bank', 'learn'];
 

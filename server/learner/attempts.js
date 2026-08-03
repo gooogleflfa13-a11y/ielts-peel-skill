@@ -98,9 +98,15 @@ export function createLocalAttemptStore() {
       const list = bucket(context?.userId);
       const record = list.find((a) => a.id === attemptId);
       if (!record) return null;
+      const now = new Date().toISOString();
       const entry = {
-        feedback: revision?.feedback || null,
-        reScoredAt: new Date().toISOString(),
+        ts: now,
+        studentText: revision?.studentText ?? null,
+        feedback: revision?.feedback ?? null,
+        criterionFeedback: revision?.criterionFeedback ?? null,
+        validation: revision?.validation ?? null,
+        diff: revision?.diff ?? null,
+        reScoredAt: now,
       };
       record.revisions.push(entry);
       return entry;

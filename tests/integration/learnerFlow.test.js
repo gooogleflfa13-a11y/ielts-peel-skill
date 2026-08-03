@@ -122,6 +122,31 @@ describe('Privacy API - local stores', () => {
     );
   });
 
+  it('saves and retrieves a learner profile through the public profile routes', async () => {
+    const { app } = localApp();
+    const profile = {
+      testType: 'academic',
+      targetBand: 7,
+      currentLevel: 6,
+      examDate: '2026-12-01',
+      language: 'en',
+      skill: 'writing',
+    };
+
+    const saved = await request(app)
+      .post('/api/learner/profile')
+      .set('x-learner-id', 'learner-9')
+      .send({ profile });
+    expect(saved.status).toBe(200);
+    expect(saved.body.profile).toMatchObject(profile);
+
+    const fetched = await request(app)
+      .get('/api/learner/profile')
+      .set('x-learner-id', 'learner-9');
+    expect(fetched.status).toBe(200);
+    expect(fetched.body.profile).toMatchObject(profile);
+  });
+
   it('DELETE removes all seeded learner data', async () => {
     const { app, attemptStore, profileStore, memoryStore } = localApp();
 
