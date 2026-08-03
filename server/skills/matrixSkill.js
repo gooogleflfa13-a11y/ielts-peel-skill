@@ -52,6 +52,7 @@ export async function runMatrixSkill({
         minPeels: 4,
         maxPeels: 4,
         extraIssues: matrixContractIssues,
+        prompt: input,
       }),
     repair: ({ content: failedContent, issues }) =>
       callLLM({

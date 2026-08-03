@@ -110,7 +110,7 @@ async function streamPeel(request, options) {
     content,
     usage: null,
     evaluate: (candidate) =>
-      evaluatePeelOutput(candidate, { minPeels: 1, maxPeels: 1 }),
+      evaluatePeelOutput(candidate, { minPeels: 1, maxPeels: 1, prompt: clean }),
     repair: ({ content: failedContent, issues }) =>
       callLLM({
         apiKey: request.apiKey,

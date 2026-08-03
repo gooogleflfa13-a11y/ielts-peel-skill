@@ -35,6 +35,17 @@ function escapeRegex(s) {
   return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
 
+function stemWord(word) {
+  return word
+    .toLowerCase()
+    .replace(/ies$/i, 'y')
+    .replace(/sses$/i, 'ss')
+    .replace(/ing$/i, '')
+    .replace(/ed$/i, '')
+    .replace(/s$/i, '')
+    .replace(/ment$/i, '');
+}
+
 function buildKeywordEntries() {
   const entries = [];
   for (const [topicId, keywords] of Object.entries(TOPIC_KEYWORDS)) {
@@ -44,6 +55,7 @@ function buildKeywordEntries() {
         topicId,
         keyword: kw,
         lower: kw.toLowerCase(),
+        stem: isPhrase ? null : stemWord(kw),
         weight: isPhrase ? KEYWORD_WEIGHTS.phrase : KEYWORD_WEIGHTS.word,
         isPhrase,
       });
@@ -78,7 +90,7 @@ export function classifyTopic(input) {
   }
 
   for (const entry of KEYWORD_ENTRIES) {
-    if (!wordBoundaryMatch(lower, entry.lower, entry.isPhrase)) continue;
+    if (!matchesKeyword(lower, entry)) continue;
     allScores[entry.topicId] += entry.weight;
     if (!allMatched[entry.topicId].includes(entry.keyword)) {
       allMatched[entry.topicId].push(entry.keyword);
@@ -127,6 +139,22 @@ function wordBoundaryMatch(haystack, needleLower, isPhrase) {
   } catch {
     return false;
   }
+}
+
+/**
+ * Match a keyword against lowercased input. Exact word-boundary matches win;
+ * single-word keywords additionally tolerate inflection via stemming so that
+ * plural forms like "schools" / "governments" still classify. Word boundaries
+ * are still enforced per word, so "apple" never matches the keyword "app".
+ */
+function matchesKeyword(haystackLower, entry) {
+  if (wordBoundaryMatch(haystackLower, entry.lower, entry.isPhrase)) return true;
+  if (!entry.isPhrase && entry.stem) {
+    return haystackLower
+      .split(/[^a-z]+/)
+      .some((word) => word.length >= 3 && stemWord(word) === entry.stem);
+  }
+  return false;
 }
 
 /**

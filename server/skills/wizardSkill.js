@@ -58,6 +58,7 @@ export async function runWizardSkill({
           minPeels: 3,
           maxPeels: 4,
           extraIssues: wizardScriptIssues,
+          prompt: safeInput,
         })
     : evaluateWizardQuestions;
   const wrappedUser = wrapAsTaskPayload(userMessage);

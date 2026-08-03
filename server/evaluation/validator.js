@@ -1,6 +1,7 @@
 import { readFileSync } from 'fs';
 import { join, dirname } from 'path';
 import { fileURLToPath } from 'url';
+import { semanticQualityIssues } from './semanticChecks.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const E2_BANK = JSON.parse(
@@ -104,7 +105,45 @@ const PHYSICAL_INDICATORS = [
   /\bfamily\b/i,
   /\bneighbor\b/i,
   /\brestaurant\b/i,
+  // Semantic-audit additions: concrete everyday entities that legitimately
+  // appear in E2 scenes; matched stem-tolerantly below so plurals count.
+  /\bcameras?\b/i,
+  /\bbus\b/i,
+  /\blights?\b/i,
+  /\bclinic\b/i,
+  /\bapartments?\b/i,
+  /\bgrocer(?:y|ies)\b/i,
+  /\bfestivals?\b/i,
+  /\bresidents?\b/i,
+  /\belectric vehicles\b/i,
+  /\bdiesel\b/i,
+  /\bpassengers?\b/i,
+  /\bbudget\b/i,
+  /\bvans?\b/i,
+  /\bdeliver(?:y|ies)\b/i,
 ];
+
+function stemWord(word) {
+  return word
+    .toLowerCase()
+    .replace(/ies$/i, 'y')
+    .replace(/sses$/i, 'ss')
+    .replace(/ing$/i, '')
+    .replace(/ed$/i, '')
+    .replace(/s$/i, '')
+    .replace(/ment$/i, '');
+}
+
+// Singular stems of the single-word physical indicators, so plural forms in
+// E2 (parents, nurses, cameras) count as concrete evidence.
+const PHYSICAL_STEMS = new Set();
+for (const pattern of PHYSICAL_INDICATORS) {
+  const match = pattern.source.match(/^\\b([a-z]+(?:\\s+[a-z]+)*)\\b$/i);
+  if (match) {
+    const words = match[1].split('\\s+');
+    if (words.length === 1) PHYSICAL_STEMS.add(stemWord(words[0]));
+  }
+}
 
 const CLOSURE_CUE = /^(?:thus|therefore|hence|consequently|overall|as a result|so)\b/i;
 const CLOSURE_STOP_WORDS = new Set([
@@ -147,8 +186,9 @@ function meaningfulTerms(text) {
 
 /**
  * @param {{ P: string, E1: string, E2: string, L: string }} peel
+ * @param {{ prompt?: string }} [options]
  */
-export function validatePeel(peel) {
+export function validatePeel(peel, { prompt } = {}) {
   const warnings = [];
   const issues = [];
   const score = { structure: 0, layers: 0, vocabs: 0, physical: 0 };
@@ -158,6 +198,7 @@ export function validatePeel(peel) {
     e2Concreteness: 'pass',
     linkClosure: 'pass',
     bannedGlue: 'pass',
+    semanticQuality: 'pass',
   };
   const addIssue = ({ layer = null, code, evidence, action, message }) => {
     issues.push({ layer, code, evidence, action });
@@ -248,9 +289,17 @@ export function validatePeel(peel) {
         message: 'P contains "such as"',
       });
     }
-    const causeCount = (
-      peel.P.match(/\b(because|leads to|results in|causes?|triggers?|due to)\b/gi) || []
-    ).length;
+    const pCausalMatches =
+      peel.P.match(/\b(because|leads to|results in|causes?|triggers?|due to)\b/gi) || [];
+    // "X is valuable because ..." is a stance plus reason, not a causal chain
+    // being developed in P; those evaluative patterns are exempt.
+    const evaluativeBecause =
+      /\b(?:valuable|important|beneficial|necessary|useful|essential|vital|crucial|worthwhile|desirable|effective|good)\s+because\b/i.test(
+        peel.P
+      );
+    const causeCount = evaluativeBecause
+      ? pCausalMatches.filter((match) => !/^because$/i.test(match)).length
+      : pCausalMatches.length;
     if (causeCount > 0) {
       checks.layerBoundaries = 'fail';
       addIssue({
@@ -266,10 +315,16 @@ export function validatePeel(peel) {
   if (peel?.E1) {
     const e1Lower = peel.E1.toLowerCase();
     let e1EntityCount = 0;
-    for (const term of ALL_E2_TERMS) {
-      if (e1Lower.includes(term)) e1EntityCount++;
+    // Count full entity phrases and concrete person/place/object indicators
+    // only - not every bank word - so abstract mechanism words like
+    // "systems" / "service" / "daily" are not mistaken for entities.
+    for (const phrase of ALL_E2_PHRASES) {
+      if (phrase.length >= 4 && e1Lower.includes(phrase)) e1EntityCount++;
     }
-    if (e1EntityCount > 2) {
+    for (const pat of PHYSICAL_INDICATORS) {
+      if (pat.test(peel.E1)) e1EntityCount++;
+    }
+    if (e1EntityCount > 1) {
       checks.layerBoundaries = 'fail';
       addIssue({
         layer: 'E1',
@@ -286,13 +341,19 @@ export function validatePeel(peel) {
     for (const pat of PHYSICAL_INDICATORS) {
       if (pat.test(peel.E2)) physicalScore++;
     }
+    // Plural tolerance: parents -> parent, nurses -> nurse, cameras -> camera.
+    const e2Words = peel.E2.toLowerCase().split(/[^a-z]+/).map(stemWord);
+    for (const stem of PHYSICAL_STEMS) {
+      if (e2Words.includes(stem)) physicalScore++;
+    }
     // Prefer full-phrase bank hits to avoid common-word false positives
     const e2Lower = peel.E2.toLowerCase();
     let bankHits = 0;
     for (const phrase of ALL_E2_PHRASES) {
       if (phrase.length >= 4 && e2Lower.includes(phrase)) bankHits++;
     }
-    if (physicalScore === 0 && bankHits === 0) {
+    const concreteHits = physicalScore + bankHits;
+    if (concreteHits === 0) {
       checks.e2Concreteness = 'fail';
       addIssue({
         layer: 'E2',
@@ -302,16 +363,6 @@ export function validatePeel(peel) {
         message: 'E2 lacks ANY physical entity — add a concrete person/place/object/action',
       });
       score.physical = 0;
-    } else if (physicalScore + bankHits < 2) {
-      checks.e2Concreteness = 'fail';
-      addIssue({
-        layer: 'E2',
-        code: 'E2_WEAKLY_CONCRETE',
-        evidence: peel.E2,
-        action: 'Use at least two concrete indicators in E2.',
-        message: 'E2 is weak on physicality — goal: 2+ concrete indicators',
-      });
-      score.physical = 0.5;
     } else {
       score.physical = 1;
     }
@@ -346,6 +397,11 @@ export function validatePeel(peel) {
     }
   }
 
+  for (const semanticIssue of semanticQualityIssues(peel, { prompt })) {
+    checks.semanticQuality = 'fail';
+    addIssue({ ...semanticIssue });
+  }
+
   if (!warnings.some((w) => w.includes('P has') || w.includes('P contains'))) {
     score.layers += 0.25;
   }
@@ -366,9 +422,9 @@ export function validatePeel(peel) {
   };
 }
 
-export function validatePeels(peels) {
+export function validatePeels(peels, { prompt } = {}) {
   const list = Array.isArray(peels) ? peels : [];
-  const results = list.map((peel) => validatePeel(peel));
+  const results = list.map((peel) => validatePeel(peel, { prompt }));
   const n = Math.max(results.length, 1);
   const checkNames = [
     'labels',
@@ -376,6 +432,7 @@ export function validatePeels(peels) {
     'e2Concreteness',
     'linkClosure',
     'bannedGlue',
+    'semanticQuality',
   ];
   return {
     passed: results.length > 0 && results.every((r) => r.passed),

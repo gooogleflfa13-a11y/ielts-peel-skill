@@ -26,11 +26,11 @@ function countIssue(actual, minPeels, maxPeels) {
 
 export function evaluatePeelOutput(
   content,
-  { minPeels = 1, maxPeels = minPeels, extraIssues = () => [] } = {}
+  { minPeels = 1, maxPeels = minPeels, extraIssues = () => [], prompt } = {}
 ) {
   const parsed = parsePeelOutput(content);
   const validation = parsed.ok
-    ? validatePeels(parsed.peels)
+    ? validatePeels(parsed.peels, { prompt })
     : {
         passed: false,
         checks: {
@@ -39,6 +39,7 @@ export function evaluatePeelOutput(
           e2Concreteness: 'fail',
           linkClosure: 'fail',
           bannedGlue: 'fail',
+          semanticQuality: 'fail',
         },
         issues: parsed.issues,
         details: [],

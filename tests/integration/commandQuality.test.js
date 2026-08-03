@@ -23,6 +23,13 @@ const validPeel = `[P] Physical schooling develops social competence.
 [E2] Students in university seminar rooms form study groups around whiteboards.
 [L] Thus, physical schooling supports holistic education.`;
 
+// Same-topic matrix PEEL: the matrix input is "community change" (Society), so
+// every PEEL in the fixture must use a Society-consistent concrete scene.
+const societyMatrixPeel = `[P] Community festivals strengthen social cohesion.
+[E1] Repeated shared activities create trust between neighbours who rarely meet.
+[E2] A parent cooks a traditional dish with family members at a neighbourhood festival.
+[L] Therefore, community festivals strengthen social cohesion.`;
+
 const validMatrix = `## 命中模型
 Model B: Physical Presence vs Virtual — physical contact is the dominant mechanism
 
@@ -30,15 +37,15 @@ Model B: Physical Presence vs Virtual — physical contact is the dominant mecha
 - Physical contact creates repeated social negotiation.
 
 ## 基准 PEEL（对本现象）
-${validPeel}
+${societyMatrixPeel}
 
 ## 横向秒杀 ×3
 ### 题1: Should schools retain face-to-face classes?
-${validPeel}
+${societyMatrixPeel}
 ### 题2: Does remote work weaken teamwork?
-${validPeel}
+${societyMatrixPeel}
 ### 题3: Are public spaces important for communities?
-${validPeel}
+${societyMatrixPeel}
 
 ## 逻辑同构说明
 四组论证共用实体接触促进社会能力的机制，仅替换具体场景。`;

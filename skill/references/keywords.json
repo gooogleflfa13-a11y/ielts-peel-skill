@@ -112,6 +112,7 @@
     "punishment",
     "deterrence",
     "rehabilitation",
+    "offender",
     "juvenile",
     "young offender",
     "theft",
@@ -199,6 +200,7 @@
     "countryside",
     "village",
     "commuter",
+    "transport",
     "traffic",
     "congestion",
     "gridlock",
@@ -225,6 +227,7 @@
   ],
   "Society": [
     "society",
+    "community",
     "culture",
     "tradition",
     "heritage",
@@ -264,6 +267,7 @@
   "Health": [
     "health",
     "healthcare",
+    "patient",
     "medical",
     "hospital",
     "doctor",

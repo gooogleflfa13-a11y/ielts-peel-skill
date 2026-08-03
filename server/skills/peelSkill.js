@@ -65,7 +65,8 @@ export async function runPeelSkill({
   const finalized = await finalizeGeneratedOutput({
     content,
     usage,
-    evaluate: (candidate) => evaluatePeelOutput(candidate, { minPeels: 1, maxPeels: 1 }),
+    evaluate: (candidate) =>
+      evaluatePeelOutput(candidate, { minPeels: 1, maxPeels: 1, prompt: safeInput }),
     repair: ({ content: failedContent, issues }) =>
       callLLM({
         apiKey,

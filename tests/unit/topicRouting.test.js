@@ -19,11 +19,13 @@ describe('topic routing - word boundary matching', () => {
     expect(r.label).toBe('Unknown');
   });
 
-  it('does not match plural forms of a singular keyword as exact matches', () => {
-    // "governments" should not be treated as the exact keyword "government".
-    // The prompt has no other Government keyword, so it must stay Unknown.
+  it('matches plural forms of a singular keyword via stemming', () => {
+    // "governments" stems to the keyword "government". Real IELTS prompts use
+    // plurals heavily (schools, teachers, governments), so inflected forms
+    // must classify instead of falling back to Unknown.
     const r = classifyTopic('Governments should do something about this.');
-    expect(r.label).toBe('Unknown');
+    expect(r.topicId).toBe('Government');
+    expect(r.label).toBe('Government');
   });
 });
 
