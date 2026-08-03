@@ -89,7 +89,7 @@ IELTS PEEL Hacker 是一个**冷逻辑引擎**，将雅思写作 Task 2 和口�
         ③ buildPrompt()              → 组装 System Prompt
         ④ callLLM() / streamLLM()    → 调用 OpenAI 兼容 API
         ⑤ peelParser.parse()         → 提取 [P][E1][E2][L]
-        ⑥ validator.validatePeels()  → 程序化质量门（107 条正则 + E2 实体库）
+        ⑥ validator.validatePeels()  → 双层质量门（结构：107 条正则 + E2 实体库；语义：6 条启发式规则）
         ⑦ [最多重试 1 次]             → finalizeGeneratedOutput()
         ⑧ detectEntities()           → 提取物理实体标签
         ⑨ memoryStore.recordResult() → 更新用户记忆
@@ -130,6 +130,7 @@ pipeline/executeCommand.js 编排：
 | `.env.example` | 环境变量模板（PORT, APP_MODE, PROVIDER_BASE_URL, UPSTREAM_TIMEOUT_MS 等） |
 | `banner.gif` | 动态 Banner（1200×400, ~860KB, 78 帧） |
 | `gen_banner.py` | Banner 生成 Python 脚本 |
+| `evals/` | 项目自建评估语料：`corpus.mjs`（180 prompt + 72 validator 用例 + 54 修订三元组）、`metrics.mjs`（指标计算 + 质量阈值，供 `run-evals.mjs` 与测试回归门共用） |
 | `LICENSE` | MIT 许可证 |
 | `findings.md` / `progress.md` / `task_plan.md` | 开发临时记录，非产品文件 |
 
@@ -205,8 +206,9 @@ pipeline/executeCommand.js 编排：
 
 | 文件 | 职责 |
 |------|------|
-| `evaluation/validator.js` | **核心 PEEL 校验器**。107 条正则模式 + E2 实体库（`e2-entities.json`）匹配。`validatePeel(peel)` 检查：labels、layerBoundaries（句子数/终止标点）、e2Concreteness（物理性指标+实体库命中数）、linkClosure（L 回扣 P 词项重叠）、bannedGlue（禁止话语胶水）。导出 `detectEntities(text)` 供前端高亮 |
-| `evaluation/outputQuality.js` | 质量门：`evaluatePeelOutput()`（parse + validate + 计数检查）、`evaluateWizardQuestions()`（问题阶段检查）、`matrixContractIssues()`（6 个章节完整性检查）、`wizardScriptIssues()`（路由表 4 列检查）、`finalizeGeneratedOutput()`（**最多 1 次修复**，再失败标记 quality_failed）、`buildRepairInstruction()` |
+| `evaluation/validator.js` | **核心 PEEL 校验器**。结构层：107 条正则模式 + E2 实体库（`e2-entities.json`）匹配，检查 labels、layerBoundaries（句子数/终止标点）、e2Concreteness（物理性指标+实体库命中数，含复数词干容错）、linkClosure（L 回扣 P 词项重叠）、bannedGlue（禁止话语胶水）。语义层：聚合 `semanticChecks.js` 的 6 条启发式规则到 `checks.semanticQuality`。`validatePeel(peel, { prompt })` 支持 prompt 上下文。导出 `detectEntities(text)` 供前端高亮 |
+| `evaluation/semanticChecks.js` | **语义质量层**（零 token、确定性）。`semanticQualityIssues(peel, { prompt })` 拦截：`P_TOPIC_ANCHOR`（P 无话题锚点/荒谬论点）、`UNSUPPORTED_ATTRIBUTION`（编造统计/研究归因）、`ENTITY_PILE`（E2 实体堆砌无动作）、`CIRCULAR_MECHANISM`（E1 循环论证）、`ABSOLUTE_GROUP_CLAIM`（绝对化群体归因）、`OFF_TOPIC_EVIDENCE`（E2 场景与 prompt 话题不符，需 prompt）。词干容错的话题锚定（schools→school） |
+| `evaluation/outputQuality.js` | 质量门：`evaluatePeelOutput()`（parse + 双层 validate + 计数检查，支持 `prompt` 透传）、`evaluateWizardQuestions()`（问题阶段检查）、`matrixContractIssues()`（6 个章节完整性检查）、`wizardScriptIssues()`（路由表 4 列检查）、`finalizeGeneratedOutput()`（**最多 1 次修复**，再失败标记 quality_failed）、`buildRepairInstruction()` |
 | `evaluation/structuralFeedback.js` | 面向用户的 PEEL 结构反馈构建器，将校验结果映射为可读 issue 列表。含 `STRUCTURAL_FEEDBACK_DISCLAIMER` |
 | `evaluation/criterionFeedback.js` | 将 PEEL 结构检查映射到 **官方雅思评分维度**：Writing（TR/CC/LR/GRA）、Speaking（FC/LR/GRA/PR）。**不预测 band 分数** |
 | `evaluation/aiScorer.js` | **已废弃**。`aiSemanticScore()` 总是抛出 `AI_SCORE_DISABLED` 错误 |
@@ -215,7 +217,7 @@ pipeline/executeCommand.js 编排：
 
 | 文件 | 职责 |
 |------|------|
-| `knowledge/topicRetriever.js` | 主题分类引擎。词边界正则匹配（`\bword\b`），词组权重 3、单词权重 2、阈值 2。导出 `classifyTopic()`、`loadTopicKnowledge()`、`retrieveTopic()`（一键分类+加载）、`matchReductionModel()`（A/B/C 归约模型匹配） |
+| `knowledge/topicRetriever.js` | 主题分类引擎。词边界正则匹配（`\bword\b`）+ 单词词干容错（复数 schools→school），词组权重 3、单词权重 2、阈值 2。导出 `classifyTopic()`、`loadTopicKnowledge()`、`retrieveTopic()`（一键分类+加载）、`matchReductionModel()`（A/B/C 归约模型匹配） |
 | `knowledge/questionBank.js` | 口语题库引擎。`loadBank()`（单槽缓存）、`warehouseMeta()`、`randomQuestion()`、`searchTopics()`、`analyzeLinks()`（水平+垂直关联图）、`bankStats()`、`resolveToPeel()` |
 | `knowledge/keywords.json` | 9 个母题的关键词分类权重（302 行） |
 | `knowledge/e2-entities.json` | E2 物理实体库（场景/人/物品，按 9 母题组织） |
@@ -302,12 +304,12 @@ pipeline/executeCommand.js 编排：
 
 | 分类 | 数量 | 文件 |
 |------|------|------|
-| **Unit** | 29 个 | `tests/unit/*.test.js` |
+| **Unit** | 34 个 | `tests/unit/*.test.js` |
 | **Integration** | 6 个 | `tests/integration/*.test.js` |
 | **Golden test data** | 1 个 | `tests/golden/peel-cases.json` |
-| **总计** | **36 个文件 / 335 个测试用例** | |
+| **总计** | **41 个文件 / 352 个测试用例** | |
 
-Unit 测试覆盖：aiScorer, appRegistry, attempts, clientCapability, clientContract, clientLearnUI, clientOnboarding, clientRuntime, config, criterionFeedback, driftCheck, executeCommand, learnSkill, llmClient, memoryStore, memoryTrustTier, peelParser, profile, promptBuilder, publicErrors, questionBank, rateLimit, registry, sanitize, schemas, strictPeelParser, structuralFeedback, topicRetriever, topicRouting, validator, wizardState, writingSpeakingSeparation
+Unit 测试覆盖：aiScorer, appRegistry, attempts, clientCapability, clientContract, clientLearnUI, clientOnboarding, clientRuntime, config, criterionFeedback, driftCheck, evalCorpus（含质量阈值回归门）, executeCommand, learnSkill, llmClient, memoryStore, memoryTrustTier, peelParser, profile, promptBuilder, publicErrors, questionBank, rateLimit, registry, sanitize, schemas, semanticChecks, strictPeelParser, structuralFeedback, topicRetriever, topicRouting, validator, wizardState, writingSpeakingSeparation
 
 Integration 测试覆盖：commandQuality, httpSafety, learnerFlow, pipeline, streamSafety, unifiedPipeline
 
@@ -318,6 +320,7 @@ Integration 测试覆盖：commandQuality, httpSafety, learnerFlow, pipeline, st
 | `build-prompt.mjs` | 从 `Agent_System_Prompt.md` 提取第一个 fenced code block → 生成 `server/systemPrompt.js` |
 | `sync-skill.mjs` | 同步 `skill/` → `.grok/skills/ielts-peel-skill/` 和 `~/.agents/skills/` |
 | `check-drift.mjs` | 漂移检测：验证 commands/registry.js 与 docs/specs 的 alignment |
+| `run-evals.mjs` | 评估报告：对 `evals/corpus.mjs` 运行分类/验证/修订指标，未达阈值（topicMacroF1≥0.85、semanticFalseAcceptRate≤0.1、revisionTargetResolutionRate≥0.85）时退出码非零 |
 
 ### 3.9 `docs/` — 文档
 
@@ -412,7 +415,7 @@ Layer 5: 记忆隔离
   `sanitizeFuelText()`：wizard 答案入库前过滤 email/phone/注入
 
 Layer 6: 质量门
-  程序化校验（validator.js）：107 条正则 + 实体库匹配，不消耗 LLM token
+  程序化双层校验（validator.js + semanticChecks.js）：结构 107 条正则 + E2 实体库，语义 6 条启发式规则，均不消耗 LLM token
   finalizeGeneratedOutput()：最多 1 次自动修复，再失败标记 quality_failed
   quality_failed 的输出永不以 ok: true 返回
   SSE 流式：accumulate-before-validate（收集全部 chunk 后才验证，无效输出不会被流式推送）
@@ -452,7 +455,7 @@ Layer 6: 质量门
 npm install && cd server && npm install && cd ../client && npm install && cd ..
 cp .env.example .env  # 编辑填入 API Key
 npm run dev            # 同时启动 server (3001) + client (5173)
-npm test               # 运行 335 个测试
+npm test               # 运行 352 个测试（含 eval 质量阈值回归门）
 ```
 
 ---
@@ -470,9 +473,9 @@ npm test               # 运行 335 个测试
 - `scripts/sync-skill.mjs` → 复制到 `skill/references/SYSTEM_PROMPT.md`
 - `scripts/check-drift.mjs` → 验证 alignment
 
-### 7.3 程序化质量门 > AI 评分
+### 7.3 程序化双层质量门 > AI 评分
 
-`evaluation/validator.js` 用 107 条正则 + E2 实体库做离线结构校验（零 token 消耗）。`evaluation/aiScorer.js` 禁用并抛错。质量门确保输出符合 PEEL 合约后才返回给用户。
+`evaluation/validator.js` 用 107 条正则 + E2 实体库做离线结构校验，`evaluation/semanticChecks.js` 在其后追加 6 条确定性语义规则（话题锚定、假归因、实体堆砌、循环论证、群体刻板、离题证据），全程零 token 消耗。`evaluation/aiScorer.js` 禁用并抛错。质量门确保输出同时符合 PEEL 结构合约与语义合约后才返回给用户。
 
 ### 7.4 单次修复上限
 
@@ -486,9 +489,9 @@ E2 燃料（用户提供的个人事实）注入在 user message 层，**绝不�
 
 `wizard/wizardState.js` 用显式 history 长度判定阶段而非 LLM 推断，消除阶段误判风险。
 
-### 7.7 主题分类纯正则
+### 7.7 主题分类：词边界 + 词干容错
 
-`knowledge/topicRetriever.js` 用 `\bkeyword\b` 词边界正则匹配，词组权重 3、单词权重 2、阈值 2。无需 embedding 模型，零外部依赖。
+`knowledge/topicRetriever.js` 用 `\bkeyword\b` 词边界正则匹配（防 substring 误匹配），单词型关键词附加词干容错（复数形式 schools/governments 可命中），词组权重 3、单词权重 2、阈值 2。无需 embedding 模型，零外部依赖。
 
 ### 7.8 Streaming 安全
 
