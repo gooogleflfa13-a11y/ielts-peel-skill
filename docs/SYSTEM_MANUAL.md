@@ -130,6 +130,8 @@ pipeline/executeCommand.js 编排：
 | `.env.example` | 环境变量模板（PORT, APP_MODE, PROVIDER_BASE_URL, UPSTREAM_TIMEOUT_MS 等） |
 | `banner.gif` | 动态 Banner（1200×400, ~860KB, 78 帧） |
 | `gen_banner.py` | Banner 生成 Python 脚本 |
+| `packages/` | 可执行契约层：`core/`（引擎库，re-export server 能力，导出 `engine.js` 的 `classifyPrompt`/`reviewPeel`/`parsePeel`）、`cli/`（`peel-hacker` CLI：`classify` / `review` 子命令，stdin 支持） |
+| `contracts/commands.json` | v2.1 方向草案（draft）：3 个公开命令契约（peel/matrix/review）+ deterministicStages + workflow 引用 + 排除能力（wizard/learn/bank 归 coach extension） |
 | `evals/` | 项目自建评估语料：`corpus.mjs`（180 prompt + 72 validator 用例 + 54 修订三元组）、`metrics.mjs`（指标计算 + 质量阈值，供 `run-evals.mjs` 与测试回归门共用） |
 | `LICENSE` | MIT 许可证 |
 | `findings.md` / `progress.md` / `task_plan.md` | 开发临时记录，非产品文件 |
@@ -141,6 +143,7 @@ pipeline/executeCommand.js 编排：
 | `SKILL.md` | Skill 定义：命令表、PEEL 层物理规则、输出格式、安全协议。任何 AI Agent 加载此文件即可运行 |
 | `README.md` | 技能说明文档 |
 | `references/SYSTEM_PROMPT.md` | 完整 System Prompt（从 `Agent_System_Prompt.md` 同步） |
+| `references/workflows/` | 命令契约文档：`peel.md` / `matrix.md` / `review.md`（对应 `contracts/commands.json` 的 deterministicStages：classify → context → validate / validate → review，含输入输出契约与失败策略） |
 | `references/e2-entities.json` | E2 物理实体库（人/场景/物品，按 9 母题组织） |
 | `references/keywords.json` | 主题关键词映射（带权重） |
 | `references/models.json` | 3 个通用归约模型（A/B/C） |
@@ -306,10 +309,13 @@ pipeline/executeCommand.js 编排：
 |------|------|------|
 | **Unit** | 34 个 | `tests/unit/*.test.js` |
 | **Integration** | 6 个 | `tests/integration/*.test.js` |
+| **Core/CLI** | 2 个 | `tests/core/engine.test.js`（引擎契约）+ `tests/cli/peel.test.js`（CLI 子命令） |
 | **Golden test data** | 1 个 | `tests/golden/peel-cases.json` |
-| **总计** | **41 个文件 / 352 个测试用例** | |
+| **总计** | **43 个文件 / 364 个测试用例** | |
 
 Unit 测试覆盖：aiScorer, appRegistry, attempts, clientCapability, clientContract, clientLearnUI, clientOnboarding, clientRuntime, config, criterionFeedback, driftCheck, evalCorpus（含质量阈值回归门）, executeCommand, learnSkill, llmClient, memoryStore, memoryTrustTier, peelParser, profile, promptBuilder, publicErrors, questionBank, rateLimit, registry, sanitize, schemas, semanticChecks, strictPeelParser, structuralFeedback, topicRetriever, topicRouting, validator, wizardState, writingSpeakingSeparation
+
+Core/CLI 覆盖：`packages/core/src/engine.js`（classifyPrompt 复数分类、parsePeel loose 回退、reviewPeel 双层校验/离题检测/criterion 代理映射）与 `packages/cli/bin/peel.mjs`（classify/review/stdin 子命令）
 
 Integration 测试覆盖：commandQuality, httpSafety, learnerFlow, pipeline, streamSafety, unifiedPipeline
 

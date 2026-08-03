@@ -1,0 +1,11 @@
+{
+  "name": "@ielts-peel/core",
+  "version": "2.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Dependency-free PEEL parser, topic router, context builder, validator, and review engine.",
+  "exports": {
+    ".": "./src/index.js",
+    "./engine": "./src/engine.js"
+  }
+}

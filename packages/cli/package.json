@@ -1,0 +1,10 @@
+{
+  "name": "@ielts-peel/cli",
+  "version": "2.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Command-line adapter for @ielts-peel/core.",
+  "bin": {
+    "peel-hacker": "./bin/peel.mjs"
+  }
+}

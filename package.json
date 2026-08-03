@@ -30,7 +30,8 @@
     "build": "npm run build:prompt && npm run sync:skill && node client/node_modules/vite/bin/vite.js build --config client/vite.config.js",
     "start": "NODE_ENV=production node server/index.js",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "peel-hacker": "node packages/cli/bin/peel.mjs"
   },
   "devDependencies": {
     "concurrently": "^9.1.2",

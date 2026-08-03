@@ -1,0 +1,52 @@
+{
+  "schemaVersion": 1,
+  "status": "draft",
+  "productVersion": "2.0.0",
+  "publicSkill": "ielts-peel-hacker",
+  "commands": [
+    {
+      "name": "peel",
+      "runtimeCommand": "peel",
+      "aliases": [],
+      "modes": ["writing", "speaking"],
+      "workflow": "references/workflows/peel.md",
+      "description": "Generate one PEEL argument, then validate it against the executable contract.",
+      "deterministicStages": ["classify", "context", "validate"],
+      "stateful": false
+    },
+    {
+      "name": "matrix",
+      "runtimeCommand": "matrix",
+      "aliases": [],
+      "modes": ["writing"],
+      "workflow": "references/workflows/matrix.md",
+      "description": "Generate a four-PEEL transfer matrix and validate its structure.",
+      "deterministicStages": ["classify", "context", "validate"],
+      "stateful": false
+    },
+    {
+      "name": "review",
+      "runtimeCommand": "score",
+      "aliases": ["score"],
+      "modes": ["writing", "speaking"],
+      "workflow": "references/workflows/review.md",
+      "description": "Run deterministic PEEL structure and input-aware argument-risk review without generating a band score.",
+      "deterministicStages": ["validate", "review"],
+      "stateful": false
+    }
+  ],
+  "excludedCapabilities": [
+    {
+      "name": "wizard",
+      "reason": "Requires an explicit state and persistence contract; belongs in the coach extension."
+    },
+    {
+      "name": "learn",
+      "reason": "Requires learner profiles, attempts, revisions, and privacy controls; belongs in the coach extension."
+    },
+    {
+      "name": "bank",
+      "reason": "Private licensed data plane; never part of the public core skill contract."
+    }
+  ]
+}
