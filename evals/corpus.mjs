@@ -221,11 +221,184 @@ export const revisionCases = TOPICS.flatMap((topic) =>
   })
 );
 
+// --- Matrix contract cases (evaluatePeelOutput + matrixContractIssues) ---
+const SOCIETY_PEEL = `[P] Community festivals strengthen social cohesion.
+[E1] Repeated shared activities create trust between neighbours who rarely meet.
+[E2] A parent cooks a traditional dish with family members at a neighbourhood festival.
+[L] Therefore, community festivals strengthen social cohesion.`;
+
+const EDUCATION_PEEL = `[P] Physical schooling develops social competence.
+[E1] Daily peer negotiation teaches conflict resolution and empathy.
+[E2] Students in university seminar rooms form study groups around whiteboards.
+[L] Thus, physical schooling supports holistic education.`;
+
+function validMatrixBody() {
+  return `## 命中模型
+Model B: Physical Presence vs Virtual — physical contact is the dominant mechanism
+
+## 底层骨架
+- Physical contact creates repeated social negotiation.
+
+## 基准 PEEL（对本现象）
+${SOCIETY_PEEL}
+
+## 横向秒杀 ×3
+### 题1: Should communities hold more local festivals?
+${SOCIETY_PEEL}
+### 题2: Does remote work weaken community ties?
+${SOCIETY_PEEL}
+### 题3: Are public spaces important for communities?
+${SOCIETY_PEEL}
+
+## 逻辑同构说明
+四组论证共用实体接触促进社会凝聚力的机制，仅替换具体场景。`;
+}
+
+const MATRIX_PROMPT = 'community change';
+
+export const matrixCases = [
+  {
+    id: 'matrix_valid',
+    category: 'valid',
+    prompt: MATRIX_PROMPT,
+    response: validMatrixBody(),
+    expectedPass: true,
+  },
+  {
+    id: 'matrix_missing_model',
+    category: 'missing-section',
+    prompt: MATRIX_PROMPT,
+    response: validMatrixBody().replace(/^## 命中模型\nModel B: [^\n]+\n\n/m, ''),
+    expectedPass: false,
+  },
+  {
+    id: 'matrix_missing_baseline',
+    category: 'missing-section',
+    prompt: MATRIX_PROMPT,
+    response: validMatrixBody().replace(
+      `## 基准 PEEL（对本现象）\n${SOCIETY_PEEL}\n\n`,
+      ''
+    ),
+    expectedPass: false,
+  },
+  {
+    id: 'matrix_missing_question3',
+    category: 'missing-section',
+    prompt: MATRIX_PROMPT,
+    response: validMatrixBody().replace(
+      `### 题3: Are public spaces important for communities?\n${SOCIETY_PEEL}\n`,
+      ''
+    ),
+    expectedPass: false,
+  },
+  {
+    id: 'matrix_offtopic_peels',
+    category: 'off-topic',
+    prompt: MATRIX_PROMPT,
+    response: validMatrixBody().replaceAll(SOCIETY_PEEL, EDUCATION_PEEL),
+    expectedPass: false,
+  },
+  {
+    id: 'matrix_absurd_peels',
+    category: 'absurd-causality',
+    prompt: MATRIX_PROMPT,
+    response: validMatrixBody().replaceAll(
+      SOCIETY_PEEL,
+      '[P] Cats improve democracy.\n[E1] Their whiskers make public institutions more accountable.\n[E2] Students place paper ballots beside classroom whiteboards.\n[L] Therefore, cats improve democracy.'
+    ),
+    expectedPass: false,
+  },
+  {
+    id: 'matrix_missing_isomorphism',
+    category: 'missing-section',
+    prompt: MATRIX_PROMPT,
+    response: validMatrixBody().replace(/^## 逻辑同构说明\n[^\n]*$/m, ''),
+    expectedPass: false,
+  },
+];
+
+// --- Wizard contract cases (questions stage + scripts stage) ---
+const WIZARD_PROMPT = 'Some people think online education can replace traditional classrooms.';
+
+function validWizardScripts() {
+  return `${EDUCATION_PEEL}
+
+${EDUCATION_PEEL}
+
+${EDUCATION_PEEL}
+
+| 用户细节关键词 | 命中母题 | 推荐节点 | 可横向秒杀的题型举例 |
+| --- | --- | --- | --- |
+| seminar | education | social contact | online learning |`;
+}
+
+export const wizardCases = [
+  {
+    id: 'wizard_questions_valid',
+    stage: 'questions',
+    prompt: WIZARD_PROMPT,
+    response: '1. Do you study online or on campus?\n2. What does a typical lecture look like for you?\n3. When do you prefer meeting classmates face to face?',
+    expectedPass: true,
+  },
+  {
+    id: 'wizard_questions_leaks_peel',
+    stage: 'questions',
+    prompt: WIZARD_PROMPT,
+    response: '1. Do you study online or on campus?\n[P] Online education reduces social contact.\n2. What does a typical lecture look like for you?',
+    expectedPass: false,
+  },
+  {
+    id: 'wizard_questions_too_few',
+    stage: 'questions',
+    prompt: WIZARD_PROMPT,
+    response: '1. Do you study online or on campus?\n2. When do you meet classmates face to face?',
+    expectedPass: false,
+  },
+  {
+    id: 'wizard_scripts_valid',
+    stage: 'scripts',
+    prompt: WIZARD_PROMPT,
+    response: validWizardScripts(),
+    expectedPass: true,
+  },
+  {
+    id: 'wizard_scripts_no_table',
+    stage: 'scripts',
+    prompt: WIZARD_PROMPT,
+    response: validWizardScripts().replace(/\n\| 用户细节关键词[\s\S]*$/, ''),
+    expectedPass: false,
+  },
+  {
+    id: 'wizard_scripts_bad_columns',
+    stage: 'scripts',
+    prompt: WIZARD_PROMPT,
+    response: validWizardScripts().replace(' | 可横向秒杀的题型举例', ''),
+    expectedPass: false,
+  },
+  {
+    id: 'wizard_scripts_few_peels',
+    stage: 'scripts',
+    prompt: WIZARD_PROMPT,
+    response: validWizardScripts().replace(
+      /^\[P\] Physical schooling develops social competence\.\n\[E1\] Daily peer negotiation teaches conflict resolution and empathy\.\n\[E2\] Students in university seminar rooms form study groups around whiteboards\.\n\[L\] Thus, physical schooling supports holistic education\.\n\n/m,
+      ''
+    ),
+    expectedPass: false,
+  },
+];
+
 export const corpusSummary = {
   prompts: promptCases.length,
   validatorCases: validatorCases.length,
   revisionTriads: revisionCases.length,
-  total: promptCases.length + validatorCases.length + revisionCases.length,
+  matrixCases: matrixCases.length,
+  wizardCases: wizardCases.length,
+  total:
+    promptCases.length +
+    validatorCases.length +
+    revisionCases.length +
+    matrixCases.length +
+    wizardCases.length,
   provenance: 'Project-authored synthetic evaluation corpus; not teacher calibrated.',
 };
 

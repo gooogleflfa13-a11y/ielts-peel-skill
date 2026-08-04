@@ -1,6 +1,12 @@
 import { parsePeelOutput } from '../server/parsing/peelParser.js';
 import { validatePeels } from '../server/evaluation/validator.js';
 import { retrieveTopic } from '../server/knowledge/topicRetriever.js';
+import {
+  evaluatePeelOutput,
+  evaluateWizardQuestions,
+  matrixContractIssues,
+  wizardScriptIssues,
+} from '../server/evaluation/outputQuality.js';
 
 /**
  * Shared evaluation metrics over the project-authored corpus
@@ -14,6 +20,8 @@ export const EVAL_THRESHOLDS = {
   topicMacroF1: 0.85,
   semanticFalseAcceptRate: 0.1,
   revisionTargetResolutionRate: 0.85,
+  matrixContractAccuracy: 0.9,
+  wizardContractAccuracy: 0.9,
 };
 
 export function safeDivide(numerator, denominator) {
@@ -95,19 +103,81 @@ export function revisionMetrics(cases) {
 }
 
 /**
+ * Matrix contract gate: evaluatePeelOutput with matrixContractIssues over the
+ * four-PEEL matrix corpus (same evaluate path as server/skills/matrixSkill.js).
+ */
+export function matrixMetrics(cases) {
+  let correct = 0;
+  const failures = [];
+  for (const item of cases) {
+    const result = evaluatePeelOutput(item.response, {
+      minPeels: 4,
+      maxPeels: 4,
+      extraIssues: matrixContractIssues,
+      prompt: item.prompt,
+    });
+    if (result.passed === item.expectedPass) correct += 1;
+    else {
+      failures.push({
+        id: item.id,
+        category: item.category,
+        expectedPass: item.expectedPass,
+        actualPass: result.passed,
+      });
+    }
+  }
+  return { accuracy: safeDivide(correct, cases.length), failures };
+}
+
+/**
+ * Wizard contract gate: questions stage via evaluateWizardQuestions, scripts
+ * stage via evaluatePeelOutput + wizardScriptIssues (same split as
+ * server/skills/wizardSkill.js).
+ */
+export function wizardMetrics(cases) {
+  let correct = 0;
+  const failures = [];
+  for (const item of cases) {
+    const result =
+      item.stage === 'questions'
+        ? evaluateWizardQuestions(item.response)
+        : evaluatePeelOutput(item.response, {
+            minPeels: 3,
+            maxPeels: 4,
+            extraIssues: wizardScriptIssues,
+            prompt: item.prompt,
+          });
+    if (result.passed === item.expectedPass) correct += 1;
+    else {
+      failures.push({
+        id: item.id,
+        category: item.category,
+        expectedPass: item.expectedPass,
+        actualPass: result.passed,
+      });
+    }
+  }
+  return { accuracy: safeDivide(correct, cases.length), failures };
+}
+
+/**
  * Run the full metric set over the corpus. Returns the same shape as the
  * `metrics` block of the run-evals report.
  */
-export function computeEvalMetrics({ promptCases, validatorCases, revisionCases }) {
+export function computeEvalMetrics({ promptCases, validatorCases, revisionCases, matrixCases, wizardCases }) {
   const topic = macroF1(promptCases);
   const validator = validatorMetrics(validatorCases);
   const revision = revisionMetrics(revisionCases);
+  const matrix = matrixMetrics(matrixCases);
+  const wizard = wizardMetrics(wizardCases);
   return {
     topicMacroF1: topic.value,
     validatorPrecision: validator.precision,
     validatorRecall: validator.recall,
     semanticFalseAcceptRate: validator.falseAcceptRate,
     revisionTargetResolutionRate: revision.targetResolutionRate,
+    matrixContractAccuracy: matrix.accuracy,
+    wizardContractAccuracy: wizard.accuracy,
   };
 }
 
@@ -118,6 +188,8 @@ export function thresholdsMet(metrics) {
   return (
     metrics.topicMacroF1 >= EVAL_THRESHOLDS.topicMacroF1 &&
     metrics.semanticFalseAcceptRate <= EVAL_THRESHOLDS.semanticFalseAcceptRate &&
-    metrics.revisionTargetResolutionRate >= EVAL_THRESHOLDS.revisionTargetResolutionRate
+    metrics.revisionTargetResolutionRate >= EVAL_THRESHOLDS.revisionTargetResolutionRate &&
+    metrics.matrixContractAccuracy >= EVAL_THRESHOLDS.matrixContractAccuracy &&
+    metrics.wizardContractAccuracy >= EVAL_THRESHOLDS.wizardContractAccuracy
   );
 }
