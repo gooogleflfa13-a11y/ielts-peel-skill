@@ -69,4 +69,24 @@ describe('peel-hacker CLI', () => {
     expect(exitCode).toBe(0);
     expect(JSON.parse(stdout).ok).toBe(true);
   });
+
+  it('generate exits 2 with a clear error when no API key is provided', async () => {
+    const child = spawn(process.execPath, [CLI, 'generate', 'online education'], {
+      stdio: ['pipe', 'pipe', 'pipe'],
+      env: { ...process.env, PEEL_API_KEY: '', OPENAI_API_KEY: '' },
+    });
+    let stderr = '';
+    child.stderr.on('data', (chunk) => {
+      stderr += chunk;
+    });
+    const closed = new Promise((resolve) => child.on('close', resolve));
+    const exitCode = await closed;
+    expect(exitCode).toBe(2);
+    expect(stderr).toMatch(/API key/i);
+  });
+
+  it('generate rejects an empty prompt like unknown usage', async () => {
+    const { exitCode } = await runCli(['generate']);
+    expect(exitCode).toBe(2);
+  });
 });

@@ -130,7 +130,7 @@ pipeline/executeCommand.js 编排：
 | `.env.example` | 环境变量模板（PORT, APP_MODE, PROVIDER_BASE_URL, UPSTREAM_TIMEOUT_MS 等） |
 | `banner.gif` | 动态 Banner（1200×400, ~860KB, 78 帧） |
 | `gen_banner.py` | Banner 生成 Python 脚本 |
-| `packages/` | 可执行契约层：`core/`（引擎库，re-export server 能力，导出 `engine.js` 的 `classifyPrompt`/`reviewPeel`/`parsePeel`）、`cli/`（`peel-hacker` CLI：`classify` / `review` 子命令，stdin 支持） |
+| `packages/` | 可执行契约层：`core/`（引擎库，re-export server 能力，导出 `engine.js` 的 `classifyPrompt`/`reviewPeel`/`parsePeel`）、`cli/`（`peel-hacker` CLI：`classify` / `review` / `generate` 子命令，stdin 支持；`generate` 复用 `runPeelSkill` 生成并过双层质量门，需 `--api-key` 或 `PEEL_API_KEY`/`OPENAI_API_KEY`） |
 | `contracts/commands.json` | v2.1 方向草案（draft）：3 个公开命令契约（peel/matrix/review）+ deterministicStages + workflow 引用 + 排除能力（wizard/learn/bank 归 coach extension） |
 | `evals/` | 项目自建评估语料：`corpus.mjs`（180 prompt + 72 validator 用例 + 54 修订三元组）、`metrics.mjs`（指标计算 + 质量阈值，供 `run-evals.mjs` 与测试回归门共用） |
 | `LICENSE` | MIT 许可证 |

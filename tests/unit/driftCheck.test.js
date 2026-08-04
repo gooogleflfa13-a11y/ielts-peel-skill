@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
-import { mkdtemp, rm, mkdir, writeFile } from 'node:fs/promises';
+import { mkdtemp, rm, mkdir, writeFile, readFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -315,5 +315,17 @@ describe('real repo drift check', () => {
     const result = await checkDrift(REPO_ROOT);
     expect(result.errors).toEqual([]);
     expect(result.ok).toBe(true);
+  });
+
+  it('packages/core and packages/cli versions match the root version', async () => {
+    const root = JSON.parse(await readFile(join(REPO_ROOT, 'package.json'), 'utf8'));
+    const core = JSON.parse(
+      await readFile(join(REPO_ROOT, 'packages', 'core', 'package.json'), 'utf8')
+    );
+    const cli = JSON.parse(
+      await readFile(join(REPO_ROOT, 'packages', 'cli', 'package.json'), 'utf8')
+    );
+    expect(core.version).toBe(root.version);
+    expect(cli.version).toBe(root.version);
   });
 });

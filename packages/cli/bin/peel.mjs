@@ -6,15 +6,24 @@
  *   classify <prompt>            Topic classification (stage 1 of /peel, /matrix)
  *   review [opts] <peel-text>    Deterministic PEEL review (workflow: /review)
  *   review [opts] -              Read PEEL text from stdin
+ *   generate <prompt>            Generate one validated PEEL via the LLM
+ *                               (workflow: /peel; requires an API key)
  *
  * Options:
  *   --prompt <text>   Original question, enables input-aware checks (OFF_TOPIC)
  *   --skill <s>       'writing' (default) or 'speaking' — criterion proxy mapping
+ *   --api-key <k>     LLM key for generate (falls back to PEEL_API_KEY / OPENAI_API_KEY)
+ *   --model <m>       LLM model for generate (default gpt-4o-mini)
+ *
+ * Environment: PROVIDER_BASE_URL (default https://api.openai.com/v1),
+ * UPSTREAM_TIMEOUT_MS (default 30000) for generate.
  *
  * Always prints a single JSON object to stdout; exits 1 on unknown usage.
+ * generate exits 1 when the output fails the quality gate, 2 on missing key.
  */
 import { readFileSync } from 'node:fs';
 import { classifyPrompt, reviewPeel } from '../../core/src/engine.js';
+import { runPeelSkill } from '../../../server/skills/peelSkill.js';
 
 function usage() {
   console.error(
@@ -23,13 +32,21 @@ function usage() {
       '  peel-hacker classify <prompt>',
       '  peel-hacker review [--prompt <prompt>] [--skill writing|speaking] <peel-text...>',
       '  peel-hacker review [--prompt <prompt>] -   (read PEEL text from stdin)',
+      '  peel-hacker generate [--api-key <k>] [--model <m>] <prompt>',
     ].join('\n')
   );
   process.exit(2);
 }
 
 function parseArgs(argv) {
-  const options = { command: null, prompt: null, skill: 'writing', textParts: [] };
+  const options = {
+    command: null,
+    prompt: null,
+    skill: 'writing',
+    apiKey: null,
+    model: null,
+    textParts: [],
+  };
   let index = 0;
   while (index < argv.length) {
     const arg = argv[index];
@@ -48,6 +65,18 @@ function parseArgs(argv) {
       const value = argv[index + 1];
       if (value !== 'writing' && value !== 'speaking') usage();
       options.skill = value;
+      index += 2;
+      continue;
+    }
+    if (arg === '--api-key') {
+      options.apiKey = argv[index + 1];
+      if (!options.apiKey) usage();
+      index += 2;
+      continue;
+    }
+    if (arg === '--model') {
+      options.model = argv[index + 1];
+      if (!options.model) usage();
       index += 2;
       continue;
     }
@@ -105,6 +134,48 @@ if (options.command === 'review') {
     )
   );
   process.exit(result.validation.passed ? 0 : 1);
+}
+
+if (options.command === 'generate') {
+  const prompt = options.textParts.join(' ');
+  if (!prompt) usage();
+  const apiKey =
+    options.apiKey || process.env.PEEL_API_KEY || process.env.OPENAI_API_KEY;
+  if (!apiKey) {
+    console.error(
+      'generate requires an API key: pass --api-key or set PEEL_API_KEY / OPENAI_API_KEY'
+    );
+    process.exit(2);
+  }
+  const llmRuntime = {
+    baseUrl: process.env.PROVIDER_BASE_URL || 'https://api.openai.com/v1',
+    timeoutMs: Number(process.env.UPSTREAM_TIMEOUT_MS) || 30_000,
+  };
+  const result = await runPeelSkill(
+    {
+      input: prompt,
+      apiKey,
+      model: options.model || process.env.DEFAULT_MODEL || 'gpt-4o-mini',
+    },
+    { llmRuntime }
+  );
+  console.log(
+    JSON.stringify(
+      {
+        ok: result.ok,
+        status: result.status,
+        content: result.content,
+        topic: result.topic,
+        validation: result.validation,
+        entities: result.entities,
+        retries: result.retries,
+        issues: result.issues,
+      },
+      null,
+      2
+    )
+  );
+  process.exit(result.ok ? 0 : 1);
 }
 
 usage();
