@@ -8,22 +8,32 @@
  *   review [opts] -              Read PEEL text from stdin
  *   generate <prompt>            Generate one validated PEEL via the LLM
  *                               (workflow: /peel; requires an API key)
+ *   calibrate export [opts]      Export a blind-review batch (teacher calibration)
+ *   calibrate import <files...>  Analyse teacher annotations (kappa, disputes)
  *
  * Options:
  *   --prompt <text>   Original question, enables input-aware checks (OFF_TOPIC)
  *   --skill <s>       'writing' (default) or 'speaking' — criterion proxy mapping
  *   --api-key <k>     LLM key for generate (falls back to PEEL_API_KEY / OPENAI_API_KEY)
  *   --model <m>       LLM model for generate (default gpt-4o-mini)
+ *   --per-category <n> Max blind-review entries per category (calibrate export)
+ *   --seed <n>        Deterministic shuffle seed (calibrate export, default 1)
  *
  * Environment: PROVIDER_BASE_URL (default https://api.openai.com/v1),
  * UPSTREAM_TIMEOUT_MS (default 30000) for generate.
  *
  * Always prints a single JSON object to stdout; exits 1 on unknown usage.
- * generate exits 1 when the output fails the quality gate, 2 on missing key.
+ * generate exits 1 when the output fails the quality gate, 2 on missing key;
+ * calibrate import exits 1 when annotations are invalid.
  */
 import { readFileSync } from 'node:fs';
 import { classifyPrompt, reviewPeel } from '../../core/src/engine.js';
 import { runPeelSkill } from '../../../server/skills/peelSkill.js';
+import { exportBatch, readJsonl } from '../../../evals/calibration/sample.mjs';
+import {
+  buildCalibrationReport,
+  writeCalibrationReport,
+} from '../../../evals/calibration/annotations.mjs';
 
 function usage() {
   console.error(
@@ -33,6 +43,8 @@ function usage() {
       '  peel-hacker review [--prompt <prompt>] [--skill writing|speaking] <peel-text...>',
       '  peel-hacker review [--prompt <prompt>] -   (read PEEL text from stdin)',
       '  peel-hacker generate [--api-key <k>] [--model <m>] <prompt>',
+      '  peel-hacker calibrate export [--per-category <n>] [--seed <n>]',
+      '  peel-hacker calibrate import <annotation-file...>',
     ].join('\n')
   );
   process.exit(2);
@@ -45,6 +57,8 @@ function parseArgs(argv) {
     skill: 'writing',
     apiKey: null,
     model: null,
+    perCategory: null,
+    seed: 1,
     textParts: [],
   };
   let index = 0;
@@ -77,6 +91,20 @@ function parseArgs(argv) {
     if (arg === '--model') {
       options.model = argv[index + 1];
       if (!options.model) usage();
+      index += 2;
+      continue;
+    }
+    if (arg === '--per-category') {
+      const value = Number(argv[index + 1]);
+      if (!Number.isInteger(value) || value < 1) usage();
+      options.perCategory = value;
+      index += 2;
+      continue;
+    }
+    if (arg === '--seed') {
+      const value = Number(argv[index + 1]);
+      if (!Number.isInteger(value)) usage();
+      options.seed = value;
       index += 2;
       continue;
     }
@@ -176,6 +204,45 @@ if (options.command === 'generate') {
     )
   );
   process.exit(result.ok ? 0 : 1);
+}
+
+if (options.command === 'calibrate') {
+  const [subcommand, ...rest] = options.textParts;
+  if (subcommand === 'export') {
+    const { dest, count } = await exportBatch({
+      perCategory: options.perCategory ?? undefined,
+      seed: options.seed,
+    });
+    console.log(JSON.stringify({ exported: count, dest }, null, 2));
+    process.exit(0);
+  }
+  if (subcommand === 'import') {
+    if (rest.length === 0) usage();
+    const annotatedFiles = [];
+    for (const file of rest) {
+      annotatedFiles.push({ file, annotations: await readJsonl(file) });
+    }
+    const report = buildCalibrationReport(annotatedFiles);
+    const { jsonPath, mdPath } = await writeCalibrationReport(report);
+    console.log(
+      JSON.stringify(
+        {
+          raters: report.raters,
+          nEntries: report.nEntries,
+          nInvalidAnnotations: report.nInvalidAnnotations,
+          agreementWithSynthetic: report.agreement.withSynthetic,
+          nDisputed: report.agreement.nDisputed,
+          pairwiseKappa: report.pairwiseKappa,
+          report: jsonPath,
+          markdown: mdPath,
+        },
+        null,
+        2
+      )
+    );
+    process.exit(report.nInvalidAnnotations > 0 ? 1 : 0);
+  }
+  usage();
 }
 
 usage();

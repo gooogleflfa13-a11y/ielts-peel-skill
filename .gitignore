@@ -43,6 +43,10 @@ coverage/
 # Runtime user memory
 .memory/
 
+# Calibration runtime artifacts (blind-review batches and reports)
+evals/calibration/review-batch-*
+evals/calibration/calibration-report-*
+
 # Local study materials
 *.pdf
 *.docx
