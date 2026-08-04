@@ -1,0 +1,94 @@
+name: CI
+
+on:
+  push:
+    branches: ['**']
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    name: Node ${{ matrix.node }} / test / build / drift
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        node: [20, 22]
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node ${{ matrix.node }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node }}
+          cache: 'npm'
+          cache-dependency-path: |
+            package-lock.json
+            server/package-lock.json
+            client/package-lock.json
+
+      - name: Clean install (root)
+        run: npm ci
+
+      - name: Clean install (server)
+        working-directory: server
+        run: npm ci
+
+      - name: Clean install (client)
+        working-directory: client
+        run: npm ci
+
+      - name: Version consistency
+        run: |
+          node -e "const fs=require('fs'); const files=['package.json','server/package.json','client/package.json','package-lock.json','server/package-lock.json','client/package-lock.json']; const versions=files.map(file=>[file,JSON.parse(fs.readFileSync(file)).version]); if(versions.some(([,version])=>version!=='2.0.0')) { console.error(versions); process.exit(1); }"
+
+      - name: Drift check
+        run: node scripts/check-drift.mjs
+
+      - name: Full test suite
+        run: npm test
+
+      - name: Client build
+        working-directory: client
+        run: npm run build
+
+      - name: Ensure generated tracked files are committed
+        run: git diff --exit-code
+
+  dependency-audit:
+    name: Dependency audit
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: 'npm'
+          cache-dependency-path: |
+            package-lock.json
+            server/package-lock.json
+            client/package-lock.json
+
+      - name: Audit root dependencies
+        run: npm audit --audit-level=high
+
+      - name: Audit server dependencies
+        working-directory: server
+        run: npm audit --audit-level=high
+
+      - name: Audit client dependencies
+        working-directory: client
+        run: npm audit --audit-level=high
