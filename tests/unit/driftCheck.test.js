@@ -73,9 +73,49 @@ function systemPromptJs(body) {
   );
 }
 
+// A consistent contracts/commands.json: three public commands whose
+// runtimeCommand values exist in the registry and whose workflow files are
+// created by writeConsistentFixture, plus excluded coach/private capabilities.
+const CONTRACTS_CONSISTENT = {
+  schemaVersion: 1,
+  status: 'draft',
+  productVersion: '2.0.0',
+  publicSkill: 'ielts-peel-hacker',
+  commands: [
+    {
+      name: 'peel',
+      runtimeCommand: 'peel',
+      workflow: 'references/workflows/peel.md',
+      deterministicStages: ['classify', 'context', 'validate'],
+      stateful: false,
+    },
+    {
+      name: 'matrix',
+      runtimeCommand: 'matrix',
+      workflow: 'references/workflows/matrix.md',
+      deterministicStages: ['classify', 'context', 'validate'],
+      stateful: false,
+    },
+    {
+      name: 'review',
+      runtimeCommand: 'score',
+      workflow: 'references/workflows/review.md',
+      deterministicStages: ['validate', 'review'],
+      stateful: false,
+    },
+  ],
+  excludedCapabilities: [
+    { name: 'wizard', reason: 'coach extension' },
+    { name: 'learn', reason: 'coach extension' },
+    { name: 'bank', reason: 'private data plane' },
+  ],
+};
+
 async function writeConsistentFixture(dir, overrides = {}) {
   await mkdir(join(dir, 'skill'), { recursive: true });
+  await mkdir(join(dir, 'skill', 'references', 'workflows'), { recursive: true });
   await mkdir(join(dir, 'server'), { recursive: true });
+  await mkdir(join(dir, 'contracts'), { recursive: true });
   await writeFile(join(dir, 'skill', 'SKILL.md'), SKILL_MD_CONSISTENT, 'utf8');
   await writeFile(
     join(dir, 'Agent_System_Prompt.md'),
@@ -87,6 +127,18 @@ async function writeConsistentFixture(dir, overrides = {}) {
     systemPromptJs(PROMPT_BODY),
     'utf8'
   );
+  await writeFile(
+    join(dir, 'contracts', 'commands.json'),
+    JSON.stringify(CONTRACTS_CONSISTENT, null, 2),
+    'utf8'
+  );
+  for (const name of ['peel', 'matrix', 'review']) {
+    await writeFile(
+      join(dir, 'skill', 'references', 'workflows', `${name}.md`),
+      `# Workflow: /${name}\n`,
+      'utf8'
+    );
+  }
   if (overrides.skillMd) {
     await writeFile(join(dir, 'skill', 'SKILL.md'), overrides.skillMd, 'utf8');
   }
@@ -95,6 +147,21 @@ async function writeConsistentFixture(dir, overrides = {}) {
   }
   if (overrides.systemPromptJs) {
     await writeFile(join(dir, 'server', 'systemPrompt.js'), overrides.systemPromptJs, 'utf8');
+  }
+  if (overrides.contractsJson) {
+    await writeFile(
+      join(dir, 'contracts', 'commands.json'),
+      JSON.stringify(overrides.contractsJson, null, 2),
+      'utf8'
+    );
+  }
+  if (overrides.removeWorkflow) {
+    await rm(join(dir, 'skill', 'references', 'workflows', `${overrides.removeWorkflow}.md`), {
+      force: true,
+    });
+  }
+  if (overrides.noContracts) {
+    await rm(join(dir, 'contracts', 'commands.json'), { force: true });
   }
 }
 
@@ -188,6 +255,58 @@ describe('checkDrift', () => {
     expect(result.ok).toBe(false);
     // Three independent surfaces each reported.
     expect(result.errors.length).toBeGreaterThanOrEqual(3);
+  });
+
+  it('fails when contracts/commands.json is missing', async () => {
+    await writeConsistentFixture(dir, { noContracts: true });
+    const result = await checkDrift(dir);
+    expect(result.ok).toBe(false);
+    expect(result.errors.join('\n')).toMatch(/contracts\/commands\.json/i);
+  });
+
+  it('fails when a contracts runtimeCommand is not in the registry', async () => {
+    await writeConsistentFixture(dir, {
+      contractsJson: {
+        ...CONTRACTS_CONSISTENT,
+        commands: [
+          { ...CONTRACTS_CONSISTENT.commands[0], runtimeCommand: 'ghost' },
+          ...CONTRACTS_CONSISTENT.commands.slice(1),
+        ],
+      },
+    });
+    const result = await checkDrift(dir);
+    expect(result.ok).toBe(false);
+    expect(result.errors.join('\n')).toMatch(/runtimeCommand/);
+    expect(result.errors.join('\n')).toMatch(/ghost/);
+  });
+
+  it('fails when a contracts workflow file is missing', async () => {
+    await writeConsistentFixture(dir, { removeWorkflow: 'review' });
+    const result = await checkDrift(dir);
+    expect(result.ok).toBe(false);
+    expect(result.errors.join('\n')).toMatch(/workflow file missing/);
+    expect(result.errors.join('\n')).toMatch(/review\.md/);
+  });
+
+  it('fails when an excluded capability also appears in public commands', async () => {
+    await writeConsistentFixture(dir, {
+      contractsJson: {
+        ...CONTRACTS_CONSISTENT,
+        excludedCapabilities: [{ name: 'peel', reason: 'conflict' }],
+      },
+    });
+    const result = await checkDrift(dir);
+    expect(result.ok).toBe(false);
+    expect(result.errors.join('\n')).toMatch(/excludedCapability/);
+  });
+
+  it('fails when contracts schemaVersion drifts from 1', async () => {
+    await writeConsistentFixture(dir, {
+      contractsJson: { ...CONTRACTS_CONSISTENT, schemaVersion: 2 },
+    });
+    const result = await checkDrift(dir);
+    expect(result.ok).toBe(false);
+    expect(result.errors.join('\n')).toMatch(/schemaVersion/);
   });
 });
 

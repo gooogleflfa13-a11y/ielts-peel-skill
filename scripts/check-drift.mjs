@@ -147,6 +147,59 @@ export async function checkDrift(rootDir) {
     }
   }
 
+  // 4. contracts/commands.json aligns with the runtime registry and the
+  //    referenced workflow files under skill/references/workflows/.
+  const contractsRel = path.join('contracts', 'commands.json');
+  const contractsContent = await readIfExists(path.join(rootDir, contractsRel));
+  if (contractsContent === null) {
+    errors.push('contracts/commands.json not found');
+  } else {
+    let contracts = null;
+    try {
+      contracts = JSON.parse(contractsContent);
+    } catch {
+      errors.push('contracts/commands.json is not valid JSON');
+    }
+    if (contracts) {
+      const contractsErrorsBefore = errors.length;
+      if (contracts.schemaVersion !== 1) {
+        errors.push(
+          `contracts/commands.json schemaVersion must be 1 (got ${contracts.schemaVersion})`
+        );
+      }
+      const registryNames = new Set(EXPECTED_COMMANDS);
+      const publicNames = new Set();
+      for (const command of contracts.commands || []) {
+        publicNames.add(command.name);
+        if (!command.runtimeCommand || !registryNames.has(command.runtimeCommand)) {
+          errors.push(
+            `contracts command "${command.name}" runtimeCommand ` +
+              `"${command.runtimeCommand}" is not in the runtime registry`
+          );
+        }
+        if (command.workflow) {
+          const workflowAbs = path.join(rootDir, 'skill', command.workflow);
+          const workflowExists = await readIfExists(workflowAbs);
+          if (workflowExists === null) {
+            errors.push(
+              `contracts command "${command.name}" workflow file missing: ${command.workflow}`
+            );
+          }
+        }
+      }
+      for (const excluded of contracts.excludedCapabilities || []) {
+        if (publicNames.has(excluded.name)) {
+          errors.push(
+            `contracts excludedCapability "${excluded.name}" also appears in public commands`
+          );
+        }
+      }
+      if (errors.length === contractsErrorsBefore) {
+        checks.push('contracts/commands.json aligns with the runtime registry and workflows');
+      }
+    }
+  }
+
   return { ok: errors.length === 0, errors, checks };
 }
 

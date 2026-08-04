@@ -115,6 +115,7 @@ const WIZARD = {
 
 const SCORE = {
   name: 'score',
+  aliases: ['review'],
   skill: 'both',
   description:
     'Deterministic PEEL Structure Review of a user-pasted paragraph. No LLM call, no generation, no repair.',

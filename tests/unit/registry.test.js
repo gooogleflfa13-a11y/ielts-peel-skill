@@ -28,6 +28,11 @@ describe('Command Registry', () => {
     );
   });
 
+  it('score exposes the review alias from the contracts layer', () => {
+    const score = getCommandDefinition('score');
+    expect(score.aliases).toContain('review');
+  });
+
   it('every command exposes all eight contract fields', () => {
     for (const command of COMMAND_REGISTRY) {
       for (const field of REQUIRED_FIELDS) {

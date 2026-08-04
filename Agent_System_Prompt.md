@@ -396,6 +396,6 @@ The deployable prompt above documents the three PEEL-generation commands in deta
 | `/bank …` | Local-only speaking warehouse; requires explicit `ENABLE_PRIVATE_QUESTION_BANK=true` |
 | `/learn [mode]` | Learning loop (practice / hint / model / compare / revise) - student writes first, then feedback |
 
-`/score` is programmatic structural feedback only, not an official IELTS assessment or band estimate. `/bank` is a hidden data plane disabled in public mode. Unknown commands should be rejected in one cold line pointing the user at the command surface above.
+`/score` (alias `/review`) is programmatic structural feedback only, not an official IELTS assessment or band estimate. `/bank` is a hidden data plane disabled in public mode. Unknown commands should be rejected in one cold line pointing the user at the command surface above.
 
 配套全栈应用见同目录 `peel-hacker-app/`。
