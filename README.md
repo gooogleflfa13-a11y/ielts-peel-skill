@@ -31,17 +31,26 @@ The Agent Skill is more than a single prompt file, but it is not the same thing 
 | `/peel` argument generation | Yes, model-executed | Yes, model + parser + quality gate | Structure and argument development only |
 | `/matrix` transfer practice | Yes, model-executed | Yes, model + contract checks | Heuristic transfer aid |
 | `/wizard` personal detail scaffolding | Yes, host conversation state | Yes, explicit state machine | User details are untrusted input |
-| `/score` | Prompt-guided review | Deterministic structural checks | Not an IELTS score or band prediction |
+| `/score` (alias `/review`) | Prompt-guided review | Deterministic structural checks | Not an IELTS score or band prediction |
 | `/learn practice/hint/model/compare/revise` | Host-dependent | Runtime implementation | Formative feedback; not examiner-calibrated |
 | `/bank` | Not part of the licensed public product | Disabled by default | Source material remains quarantined pending rights review |
 
+### Quality gate and evaluation
+
+The runtime applies a **two-layer deterministic quality gate** (zero LLM tokens) before any generated output is returned:
+
+- **Structural layer** (`server/evaluation/validator.js`): labels, layer boundaries, E2 concreteness, link closure and banned discourse glue.
+- **Semantic layer** (`server/evaluation/semanticChecks.js`): six heuristic rules that catch topic-less/absurd points, fabricated statistics, entity piles, circular mechanisms, categorical demographic claims and off-topic evidence (prompt-aware).
+
+A project-authored evaluation corpus ([`evals/`](./evals/)) of 306 items gates the product's quality contract inside `npm test` (and `node scripts/run-evals.mjs`): `topicMacroF1 >= 0.85`, `semanticFalseAcceptRate <= 0.1`, `revisionTargetResolutionRate >= 0.85`.
+
 ### Evaluation limitations
 
-- The system checks PEEL labels, layer boundaries, E2 concreteness, link closure and banned discourse glue.
 - Criterion-oriented feedback is formative and has not been calibrated against blinded ratings from qualified IELTS teachers or examiners.
 - It does not assess a complete essay or speaking performance and does not produce an official or predicted band score.
 - Generated examples may be plausible but are not automatically fact-checked. Users must verify factual claims and citations.
 - Pronunciation cannot be validly assessed from text alone.
+- The evaluation corpus is project-authored synthetic data, not teacher-calibrated.
 
 ## Install the Agent Skill
 
@@ -119,6 +128,24 @@ A valid PEEL unit has exactly four labeled sentences:
 [L] One-sentence return to the point without a new claim.
 ```
 
+## CLI
+
+The repository ships an executable contract layer (`packages/`): a deterministic engine library and a `peel-hacker` CLI that reuses the same single-source implementations as the HTTP API. No server or API key is needed for the deterministic commands.
+
+```bash
+# Topic classification (plural-aware, e.g. "schools" -> Education)
+npm run peel-hacker -- classify "Some people think schools should receive more investment."
+
+# Deterministic PEEL review (structure + semantics); exit 0 = clean, 1 = issues found
+npm run peel-hacker -- review --prompt "community change" "<peel text>"
+printf '%s' "<peel text>" | npm run peel-hacker -- review -
+
+# Generate one validated PEEL via the LLM (requires an API key)
+npm run peel-hacker -- generate "online education vs campus" --api-key sk-...
+```
+
+The CLI's `generate` runs the full pipeline (classify -> context -> generate -> two-layer quality gate -> at most one repair) and exits non-zero when the output fails the contract.
+
 ## Architecture
 
 ```text
@@ -126,16 +153,22 @@ Agent host ----------------------> skill/SKILL.md + references
 
 Browser -> Express app -> request schema -> sanitize -> command registry
                                       -> command implementation
-                                      -> parse + validate + one repair attempt
+                                      -> parse + two-layer validate + one repair
                                       -> response schema -> browser
+
+CLI / library  -> packages/cli (peel-hacker) -> packages/core -> same server modules
+Contracts      -> contracts/commands.json + skill/references/workflows/*.md
 ```
 
 Important sources of truth:
 
-- `server/commands/registry.js`: runtime command registry.
+- `server/commands/registry.js`: runtime command registry (single source of truth for commands).
 - `Agent_System_Prompt.md`: source for generated system-prompt artifacts.
+- `contracts/commands.json`: public command contract (peel/matrix/review) referencing workflow docs.
 - `skill/`: canonical distributable skill directory.
-- `scripts/check-drift.mjs`: checks command and generated-prompt alignment.
+- `scripts/check-drift.mjs`: checks command surfaces, generated prompts and the contracts file stay aligned.
+
+All generated output passes a two-layer quality gate; `score`/`review` is deterministic (no LLM), while `peel`/`matrix`/`wizard`/`learn model` run through the gate with at most one repair attempt before a `quality_failed` response.
 
 The checked-in `.grok/` tree is a development mirror, not a second product source. Regenerate it explicitly with `npm run sync:skill:repo-mirror`; do not edit it by hand.
 
@@ -177,16 +210,16 @@ npm run build
 
 `npm run build` only writes inside the repository. User-wide skill installation is always a separate explicit command.
 
-The last local verification before this public-readiness pass completed **335 tests across 38 test files**. CI is the authoritative status for each commit; dependency security results are intentionally not hard-coded into this README.
+The last local verification completed **373 tests across 42 test files**, including the evaluation-corpus regression gate (the corpus metrics are asserted inside `npm test`, so quality cannot silently regress) and the contracts/registry/workflow drift checks.
 
-For contribution rules, see [`CONTRIBUTING.md`](./CONTRIBUTING.md), [`CODE_OF_CONDUCT.md`](./CODE_OF_CONDUCT.md) and [`CHANGELOG.md`](./CHANGELOG.md).
+For contribution rules, see [`CONTRIBUTING.md`](./CONTRIBUTING.md) and [`CODE_OF_CONDUCT.md`](./CODE_OF_CONDUCT.md). Security reports: see [`SECURITY.md`](./SECURITY.md). Content and license details: [`CONTENT_LICENSE.md`](./CONTENT_LICENSE.md) and [`NOTICE.md`](./NOTICE.md).
 
 ## Release checklist
 
 A public release is ready only when:
 
 1. CI passes on supported Node versions.
-2. `node scripts/check-drift.mjs` passes and the worktree is clean.
+2. `node scripts/check-drift.mjs` passes (command surfaces, prompts, contracts) and the worktree is clean.
 3. Package and API versions agree on `2.0.0`.
 4. The release artifact contains the canonical `skill/` package and excludes unlicensed/quarantined content.
 5. The changelog is final, the commit is tagged `v2.0.0`, and release notes state the evaluation limitations.
@@ -198,7 +231,8 @@ IELTS PEEL Hacker 是一个面向雅思写作 Task 2 与口语 Part 3 的论证�
 请特别注意：
 
 - 它不是官方 IELTS 产品，也未获 British Council、IDP 或 Cambridge 背书。
-- `/score` 和 criterion feedback 只做形成性结构反馈，不预测 Band 分数。
+- `/score`（别名 `/review`）和 criterion feedback 只做形成性结构反馈，不预测 Band 分数。
+- 生成输出须通过结构+语义双层质量门；评估语料为项目自建合成数据，未做教师校准。
 - 普通安装与构建不会写入用户主目录；只有 `install:skill:*` 会显式复制到用户级 Skill 目录。
 - 来源仍在核验的题库不属于已授权公开产品，不得用于公开发行或商业用途。
 - 公开发布前必须以 CI、版权清理、版本 Tag 和 release artifact 为准，而不是以 README 声明为准。

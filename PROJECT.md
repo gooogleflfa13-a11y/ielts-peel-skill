@@ -1,6 +1,6 @@
 # IELTS PEEL Hacker — 项目说明
 
-> 当前仓库版本：`2.0.0`。本文描述当前实现；历史蓝图和旧审计不代表现行产品承诺，状态见 [`docs/ARCHIVE_STATUS.md`](./docs/ARCHIVE_STATUS.md)。
+> 当前仓库版本：`2.0.0`。本文描述当前实现；历史蓝图和旧审计不代表现行产品承诺，状态见 [`docs/SYSTEM_MANUAL.md`](./docs/SYSTEM_MANUAL.md) 与历史档案 [`docs/EVOLUTION_BLUEPRINT.md`](./docs/EVOLUTION_BLUEPRINT.md)。
 
 ## 1. 产品定位
 
