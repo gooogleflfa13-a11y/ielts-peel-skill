@@ -22,7 +22,7 @@ IELTS PEEL Hacker 是一个**冷逻辑引擎**，将雅思写作 Task 2 和口�
 ### 1.3 项目位置
 
 - **本地路径**：`/Users/xiezhijie/Desktop/ielts agent/peel-hacker-app`
-- **GitHub 仓库**：`gooogleflfa13-a11y/ielts-peel-skill`（远端名 `origin`）
+- **GitHub 仓库**：`mixxmax/ielts-peel-skill`（远端名 `origin`）
 - **许可证**：MIT
 
 ---

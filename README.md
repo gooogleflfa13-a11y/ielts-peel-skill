@@ -2,7 +2,7 @@
 
 # IELTS PEEL Hacker
 
-[![CI](https://github.com/gooogleflfa13-a11y/ielts-peel-skill/actions/workflows/ci.yml/badge.svg)](https://github.com/gooogleflfa13-a11y/ielts-peel-skill/actions/workflows/ci.yml)
+[![CI](https://github.com/mixxmax/ielts-peel-skill/actions/workflows/ci.yml/badge.svg)](https://github.com/mixxmax/ielts-peel-skill/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/code%20license-MIT-yellow.svg)](./LICENSE)
 [![Version](https://img.shields.io/badge/version-2.0.0-blue.svg)](./CHANGELOG.md)
 
@@ -57,7 +57,7 @@ A project-authored evaluation corpus ([`evals/`](./evals/)) of 306 items gates t
 Clone the repository, then choose an explicit destination. Normal dependency installation and builds never write to your home directory.
 
 ```bash
-git clone https://github.com/gooogleflfa13-a11y/ielts-peel-skill.git
+git clone https://github.com/mixxmax/ielts-peel-skill.git
 cd ielts-peel-skill
 
 # Generic filesystem-based host, project-scoped
